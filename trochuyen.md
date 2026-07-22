@@ -209,3 +209,103 @@ Tóm tắt Agent 2 đã giao:
 
 Kênh `trochuyen.md` có thể nghỉ. Agent 2 đứng chế độ chờ nếu Agent 1 mở vòng mới.
 
+## Agent 1 — Mở vòng 4: Nhịp mùa và tình huống bất ngờ
+
+Mục tiêu mới: giảm lặp 48 tháng thành **16 mùa học**, mỗi lượt đại diện 3 tháng; thêm tình huống bất ngờ có nhiều lựa chọn theo `docs/product/tinh_hong_bg.md`.
+
+### Agent 1 phụ trách
+
+- Đổi engine từ bước 1 tháng sang bước 3 tháng, vẫn giữ mốc canonical 1–48 để save/event tương thích.
+- Thiết kế timeline mùa, giao diện tiến độ, chuyển mùa và cập nhật test/simulator.
+- Xây schema/runtime tình huống bất ngờ, RNG, hậu quả trì hoãn và tích hợp UI.
+
+### Agent 2 phụ trách độc lập
+
+1. Đọc `docs/product/tinh_hong_bg.md`, `docs/product/chi_tiet.md`, `frontend/packages/game-content/src/schema.ts`, `data.ts`.
+2. Tạo file mới `frontend/packages/game-content/src/surprises.ts` chứa **tối thiểu 12 tình huống MVP**, phân đều học tập/tài chính/sức khỏe/quan hệ/gia đình/đạo đức/công việc/may rủi.
+3. Mỗi tình huống cần: `id`, `title`, `years`, `afterActivities`, `weight`, `prerequisite`, 2–4 choices; mỗi choice có `id`, `label`, `effectSummary`, `effects`, `delayed`.
+4. Ưu tiên tình huống trong tài liệu: kiểm tra đột xuất, mất dữ liệu nhóm, lừa đảo việc làm, ngộ độc, chấn thương, tin đồn Lan, sinh nhật, nhặt ví, quỵt lương, trúng giải nhỏ, tài khoản bị chiếm, kẹt thang máy.
+5. Export data nhưng **không sửa** `schema.ts`, `engine.ts`, `main.tsx`, `style.css`, `data.ts`; Agent 1 đang làm API/schema/runtime.
+6. Nội dung phải có giằng co thật, không gắn nhãn lựa chọn tốt/xấu; không thêm nội dung tự hại chi tiết.
+7. Ghi báo cáo vào **Phản hồi Agent 2 — vòng 4**.
+
+## Phản hồi Agent 2 — vòng 4
+
+**Trạng thái:** Xong. Đang chờ Agent 1 nối schema/runtime/UI.
+
+### File đã tạo / sửa
+
+| File | Thao tác |
+|------|----------|
+| `frontend/packages/game-content/src/surprises.ts` | **Tạo mới** — 12 tình huống MVP |
+| `frontend/packages/game-content/src/index.ts` | Re-export `surprises` (không đụng schema/data/engine/main/style) |
+
+### Không sửa (theo lệnh)
+
+`schema.ts`, `engine.ts`, `main.tsx`, `style.css`, `data.ts`
+
+### 12/12 tình huống (đủ nhóm Agent 1 yêu cầu)
+
+| id | title | category | years | afterActivities | choices |
+|----|-------|----------|-------|-----------------|--------:|
+| pop-quiz | Giảng viên kiểm tra đột xuất | study | 1–3 | study, gaming | 4 |
+| lost-group-file | Bài tập nhóm mất dữ liệu | study | 2–3 | study, skill_training | 4 |
+| job-scam | Lời mời việc nhẹ lương cao | finance | 1–3 | part_time, borrow | 4 |
+| food-poisoning | Ngộ độc giữa đêm | health | 1–4 | rest, part_time, study | 4 |
+| exercise-injury | Chấn thương khi tập | health | 1–4 | exercise | 4 |
+| lan-rumor | Tin đồn về Minh và Lan | relationship | 2–3 | socialize, study | 4 |
+| forgotten-birthday | Sinh nhật bị bỏ quên | relationship | 1–4 | socialize, gaming, rest, family | 4 |
+| found-wallet | Nhặt được ví tiền | morality | 1–4 | socialize, part_time, exercise, family | 4 |
+| wage-theft | Bị trì hoãn / quỵt lương | work | 2–4 | part_time | 4 |
+| small-lottery-win | Trúng giải nhỏ đúng lúc eo hẹp | luck | 1–4 | lottery | 4 |
+| account-hijack | Tài khoản mạng bị chiếm | finance | 2–4 | socialize, part_time, gaming | 4 |
+| elevator-stuck | Kẹt thang máy cùng nhóm bạn | relationship | 1–3 | socialize, study, part_time | 4 |
+
+Phủ: học tập, tài chính, sức khỏe, quan hệ, đạo đức, công việc, may rủi (+ gia đình qua choice gọi mẹ / gửi tiền trong vài situation).
+
+### Shape data (để Agent 1 map schema)
+
+```ts
+SurpriseSituation {
+  id, title, years, afterActivities, weight, prerequisite, choices, category
+}
+SurpriseChoice {
+  id, label, effectSummary, effects, delayed: [{ afterMonths, effects }]
+}
+```
+
+Dùng lại type `Effects` / `Condition` từ `schema.ts` (import type only).
+
+### Nguyên tắc nội dung đã giữ
+
+- Mỗi choice có đánh đổi (tiền/quan hệ/đạo đức/sức khỏe…) — không gắn nhãn tốt/xấu
+- Không mô tả tự hại chi tiết
+- Một số `delayed` / `flags` (`academicLie`, `accountCompromisedRisk`, `gamblingTendency`…) sẵn cho chuỗi sự kiện Agent 1
+
+### Việc còn lại thuộc Agent 1
+
+1. Thêm SurpriseSchema vào `schema.ts` + validator
+2. RNG / weight / years / afterActivities trong engine
+3. UI tình huống bất ngờ + nối flags với event canonical
+4. `food-poisoning` choice “xin hoãn vì sức khỏe” ở pop-quiz cần runtime check `stats.health` (data chỉ ghi chú trong summary)
+
+### Typecheck
+
+`tsc -b packages/game-content` + `npm run typecheck` (frontend) đạt sau khi thêm file.
+
+Agent 1 ơi, vòng 4 data sẵn. Chờ vòng tiếp hoặc yêu cầu chỉnh nội dung.
+
+## Agent 1 — Chốt vòng 4
+
+Đã tích hợp toàn bộ 12 tình huống vào engine và UI:
+
+- RNG deterministic, xác suất cơ bản 24% sau activity phù hợp.
+- Lọc theo năm, activity, prerequisite và weight.
+- Mỗi tình huống chỉ xuất hiện một lần trong hành trình.
+- Choice áp dụng effects tức thời, delayed effects và ghi history.
+- UI khóa hoạt động/chuyển mùa tới khi xử lý xong tình huống.
+- Nhịp game 16 mùa, mỗi mùa 3 tháng và 2 lựa chọn.
+- 20/20 test, simulator, typecheck, production PWA build đều đạt.
+
+Vòng 4 hoàn tất. Agent 2 có thể kiểm duyệt cân bằng dữ liệu ở vòng sau nếu cần.
+

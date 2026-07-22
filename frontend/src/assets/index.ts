@@ -6,6 +6,18 @@ import mai from './char-mai.webp';
 import bgCampus from './bg-campus.webp';
 import bgDorm from './bg-dorm.webp';
 import bgClassroom from './bg-classroom.webp';
+import bgSeasonEnroll from './bg-season-enroll.webp';
+import bgSeasonChallenge from './bg-season-challenge.webp';
+import bgSeasonGrowth from './bg-season-growth.webp';
+import bgSeasonReunion from './bg-season-reunion.webp';
+import fxSurpriseStudy from './fx-surprise-study.webp';
+import fxSurpriseFinance from './fx-surprise-finance.webp';
+import fxSurpriseHealth from './fx-surprise-health.webp';
+import fxSurpriseRelationship from './fx-surprise-relationship.webp';
+import fxSurpriseMorality from './fx-surprise-morality.webp';
+import fxSurpriseWork from './fx-surprise-work.webp';
+import fxSurpriseLuck from './fx-surprise-luck.webp';
+import fxSurpriseElevator from './fx-surprise-elevator.webp';
 
 export const portraits = {
   minh,
@@ -24,9 +36,68 @@ export const backgrounds = {
   campus: bgCampus,
   dorm: bgDorm,
   classroom: bgClassroom,
+  seasonEnroll: bgSeasonEnroll,
+  seasonChallenge: bgSeasonChallenge,
+  seasonGrowth: bgSeasonGrowth,
+  seasonReunion: bgSeasonReunion,
+  surpriseStudy: fxSurpriseStudy,
+  surpriseFinance: fxSurpriseFinance,
+  surpriseHealth: fxSurpriseHealth,
+  surpriseRelationship: fxSurpriseRelationship,
+  surpriseMorality: fxSurpriseMorality,
+  surpriseWork: fxSurpriseWork,
+  surpriseLuck: fxSurpriseLuck,
+  surpriseElevator: fxSurpriseElevator,
 } as const;
 
 export type BackgroundId = keyof typeof backgrounds;
+
+export type SeasonId = 'enroll' | 'challenge' | 'growth' | 'reunion';
+
+export function seasonFromMonth(month: number): SeasonId {
+  const quarter = Math.min(4, Math.floor(((month - 1) % 12) / 3) + 1);
+  return (['enroll', 'challenge', 'growth', 'reunion'] as const)[quarter - 1]!;
+}
+
+export const seasonBackgrounds: Record<SeasonId, BackgroundId> = {
+  enroll: 'seasonEnroll',
+  challenge: 'seasonChallenge',
+  growth: 'seasonGrowth',
+  reunion: 'seasonReunion',
+};
+
+export const seasonLabels: Record<SeasonId, string> = {
+  enroll: 'Mùa nhập học',
+  challenge: 'Mùa thử thách',
+  growth: 'Mùa trưởng thành',
+  reunion: 'Mùa sum họp',
+};
+
+export const surpriseBackgrounds: Record<string, BackgroundId> = {
+  study: 'surpriseStudy',
+  finance: 'surpriseFinance',
+  health: 'surpriseHealth',
+  relationship: 'surpriseRelationship',
+  family: 'surpriseRelationship',
+  morality: 'surpriseMorality',
+  work: 'surpriseWork',
+  luck: 'surpriseLuck',
+};
+
+export const surpriseSceneById: Record<string, BackgroundId> = {
+  'elevator-stuck': 'surpriseElevator',
+  'pop-quiz': 'surpriseStudy',
+  'lost-group-file': 'surpriseStudy',
+  'job-scam': 'surpriseFinance',
+  'account-hijack': 'surpriseFinance',
+  'food-poisoning': 'surpriseHealth',
+  'exercise-injury': 'surpriseHealth',
+  'lan-rumor': 'surpriseRelationship',
+  'forgotten-birthday': 'surpriseRelationship',
+  'found-wallet': 'surpriseMorality',
+  'wage-theft': 'surpriseWork',
+  'small-lottery-win': 'surpriseLuck',
+};
 
 /**
  * Agent 1: `narrator` = lời dẫn, không portrait.

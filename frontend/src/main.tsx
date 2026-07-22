@@ -1,7 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { content } from '@game/game-content';
-import { dispatch, initialState, type GameState, importLegacy, type Command } from '@game/game-core';
+import { content, surprisesById } from '@game/game-content';
+import { dispatch, initialState, type GameState, importLegacy, resolveEnding, type Command } from '@game/game-core';
 import {
   activityDialogues,
   activityScenes,
@@ -9,11 +9,17 @@ import {
   eventDialogues,
   eventScenes,
   portraits,
+  seasonBackgrounds,
+  seasonFromMonth,
+  seasonLabels,
+  surpriseBackgrounds,
+  surpriseSceneById,
   type BackgroundId,
   type DialogueBeat,
   type PortraitId,
 } from './assets';
 import './style.css';
+import { gameAudio, type MusicMood } from './sound';
 
 const KEY = 'bon-nam-save-0';
 
@@ -31,7 +37,13 @@ function loadState(): GameState {
   const raw = localStorage.getItem(KEY);
   if (raw) {
     try {
-      return JSON.parse(raw) as GameState;
+      const saved = JSON.parse(raw) as GameState;
+      if (saved.month >= 48 && !saved.pendingEvent && !saved.pendingSurprise && !saved.ending) {
+        saved.flags = { ...saved.flags, graduated: saved.stats.knowledge >= 35 };
+        saved.ending = resolveEnding(saved, content);
+        localStorage.setItem(KEY, JSON.stringify(saved));
+      }
+      return saved;
     } catch {
       /* fall through */
     }
@@ -42,6 +54,10 @@ function loadState(): GameState {
 
 function yearLabel(month: number) {
   return `Năm ${Math.min(4, Math.ceil(month / 12) || 1)}`;
+}
+
+function seasonLabel(month: number) {
+  return seasonLabels[seasonFromMonth(month)];
 }
 
 function StageCast({ cast, spotlight }: { cast: PortraitId[]; spotlight?: PortraitId | null }) {
@@ -106,6 +122,20 @@ function App() {
   }, [toast]);
 
   React.useEffect(() => {
+    gameAudio.setEnabled(soundOn);
+  }, [soundOn]);
+
+  React.useEffect(() => {
+    const unlock = () => void gameAudio.ensureStarted();
+    window.addEventListener('pointerdown', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+  }, []);
+
+  React.useEffect(() => {
     setEventBeatIndex(0);
   }, [state.pendingEvent]);
 
@@ -142,6 +172,15 @@ function App() {
 
   const act = (command: Command) => {
     const monthChange = command.type === 'ADVANCE_MONTH';
+    gameAudio.play(
+      monthChange
+        ? 'advance'
+        : command.type === 'CHOOSE_SURPRISE_OPTION'
+          ? 'surprise'
+          : command.type === 'CONFIRM_STOP_JOURNEY'
+            ? 'ending'
+            : 'choice',
+    );
     if (monthChange) setTransitioning(true);
     setState((s) => {
       const next = dispatch(s, command, content);
@@ -158,6 +197,7 @@ function App() {
   };
 
   const event = content.events.find((e) => e.id === state.pendingEvent);
+  const surprise = state.pendingSurprise ? surprisesById[state.pendingSurprise] : undefined;
   const ending = content.endings.find((e) => e.id === state.ending);
   const eventBeats = event ? eventDialogues[event.id] ?? [] : [];
   const eventBeat = eventBeats[eventBeatIndex];
@@ -165,24 +205,31 @@ function App() {
   const activeActivity = conversation?.activityId ?? previewActivity;
   const activeBeat = conversation?.beats[conversation.index];
 
-  let bg: BackgroundId = 'dorm';
+  let bg: BackgroundId = seasonBackgrounds[seasonFromMonth(state.month)];
   let cast: PortraitId[] = ['minh'];
   let speaker = 'Minh';
+  const season = seasonFromMonth(state.month);
   const apLeft = state.actionPoints;
   let line =
     apLeft <= 0
-      ? 'Tháng này Minh đã dùng hết hành động. Có thể sang tháng tiếp theo.'
+      ? 'Mùa này Minh đã dùng hết lựa chọn. Có thể sang mùa tiếp theo.'
       : apLeft === 1
-        ? 'Còn một lựa chọn trong tháng này. Minh sẽ dùng nó thế nào?'
+        ? 'Còn một lựa chọn trong mùa này. Minh sẽ dùng nó thế nào?'
         : `Minh còn ${apLeft} lựa chọn để viết tiếp câu chuyện của mình.`;
-  let title = `${yearLabel(state.month)} · Tháng ${state.month}`;
+  let title = `${yearLabel(state.month)} · ${seasonLabel(state.month)}`;
 
   if (ending) {
-    bg = ending.group === 'happy' ? 'campus' : ending.group === 'bad' ? 'dorm' : 'classroom';
+    bg = ending.group === 'happy' ? 'seasonReunion' : ending.group === 'bad' ? 'dorm' : 'classroom';
     cast = ['minh'];
     speaker = 'Kết thúc';
     line = ending.name;
     title = 'Hành trình khép lại';
+  } else if (surprise) {
+    bg = surpriseSceneById[surprise.id] ?? surpriseBackgrounds[surprise.category] ?? 'campus';
+    cast = surprise.category === 'relationship' ? ['minh', 'lan', 'huy'] : surprise.category === 'work' ? ['minh', 'phong'] : ['minh'];
+    speaker = 'Tình huống bất ngờ';
+    line = 'Một chuyện không nằm trong kế hoạch đã xảy ra.';
+    title = surprise.title;
   } else if (event) {
     const scene = eventScenes[event.id] ?? { bg: 'campus' as const, cast: ['minh'] as PortraitId[], line: event.title };
     bg = scene.bg;
@@ -196,7 +243,6 @@ function App() {
     title = event.title;
   } else if (activeActivity && activityScenes[activeActivity]) {
     const scene = activityScenes[activeActivity]!;
-    bg = scene.bg;
     cast = scene.cast;
     const speakerId = activeBeat?.speaker ?? cast[0];
     speaker =
@@ -204,28 +250,54 @@ function App() {
       (speakerId === 'ong-tu' ? 'Ông Tư' : 'Minh');
     line = activeBeat?.line ?? scene.vibe;
     title = content.activities.find((a) => a.id === activeActivity)?.name ?? title;
-  } else {
-    bg = 'dorm';
-    cast = ['minh'];
   }
 
-  const canAct = state.actionPoints > 0 && state.month < 48 && !state.ending;
-  const canAdvance = state.actionPoints === 0 && state.month < 48 && !state.ending && !event;
+  const canAct = state.actionPoints > 0 && state.month < 48 && !state.ending && !surprise;
+  const canAdvance = state.actionPoints === 0 && state.month < 48 && !state.ending && !event && !surprise;
+
+  React.useEffect(() => {
+    const mood: MusicMood = ending
+      ? 'ending'
+      : surprise
+        ? 'surprise'
+        : bg === 'classroom'
+          ? 'classroom'
+          : bg === 'campus' || bg === 'seasonGrowth' || bg === 'seasonChallenge'
+            ? 'campus'
+            : 'dorm';
+    gameAudio.setMood(mood);
+    if (ending) gameAudio.play('ending');
+  }, [bg, ending, surprise]);
 
   return (
-    <div className={`game ${leaving ? 'is-leaving' : ''} ${transitioning ? 'is-transitioning' : ''}`}>
+    <div className={`game season-${season} ${leaving ? 'is-leaving' : ''} ${transitioning ? 'is-transitioning' : ''} ${surprise ? 'has-surprise' : ''}`}>
       <div className="stage" style={{ backgroundImage: `url(${backgrounds[bg]})` }}>
         <div className="stage-veil" />
+        <div className="scene-depth scene-depth-back" aria-hidden="true" />
+        <div className="scene-depth scene-depth-front" aria-hidden="true" />
+        <div className="light-orbs" aria-hidden="true">
+          <i /><i /><i /><i /><i /><i />
+        </div>
+        <div className={`weather weather-${season}`} aria-hidden="true">
+          <span /><span /><span /><span /><span /><span /><span /><span />
+        </div>
+        {surprise && <div className="surprise-flash" aria-hidden="true" />}
+        {activeActivity && !event && !surprise && (
+          <div className={`activity-visual activity-visual-${activeActivity}`} aria-hidden="true">
+            <span className="activity-visual-card" style={{ backgroundImage: `url(${backgrounds[activityScenes[activeActivity]!.bg]})` }} />
+            <span className="activity-visual-ring" />
+          </div>
+        )}
         <header className="hud">
           <div className="brand-block">
             <p className="brand">Bốn Năm Thanh Xuân</p>
             <p className="chapter">{title}</p>
           </div>
           <div className="ap" aria-live="polite">
-            <span>Hành động</span>
+            <span>Lựa chọn mùa</span>
             <strong>{state.actionPoints}</strong>
           </div>
-          <button type="button" className="menu-button" onClick={() => setMenuOpen(true)} aria-label="Mở menu game">
+          <button type="button" className="menu-button" onClick={() => { gameAudio.play('click'); setMenuOpen(true); }} aria-label="Mở menu game">
             ☰
           </button>
         </header>
@@ -237,12 +309,33 @@ function App() {
 
         <StatBars stats={state.stats} />
 
+        <div className="season-timeline" aria-label={`Tiến độ ${yearLabel(state.month)}, ${seasonLabel(state.month)}`}>
+          <span>{yearLabel(state.month)}</span>
+          <div>{[1, 2, 3, 4].map((quarter) => <i key={quarter} className={quarter <= Math.floor(((state.month - 1) % 12) / 3) + 1 ? 'is-past' : ''} />)}</div>
+          <strong>{seasonLabel(state.month)}</strong>
+        </div>
+
         <section className="dialogue" aria-live="polite">
           <div className="dialogue-sheet">
             <p className="speaker">{speaker}</p>
             <p className="line" style={{ whiteSpace: 'pre-wrap' }}>{line}</p>
 
-            {event && !state.ending && !eventIntroComplete && (
+            {surprise && !state.ending && (
+              <div className="surprise-panel">
+                <div className="surprise-label">Bất ngờ · {surprise.category}</div>
+                <h3>{surprise.title}</h3>
+                <div className="choices surprise-choices" role="group" aria-label="Lựa chọn tình huống bất ngờ">
+                  {surprise.choices.map((choice) => (
+                    <button key={choice.id} type="button" className="choice" onClick={() => act({ type: 'CHOOSE_SURPRISE_OPTION', surpriseId: surprise.id, choiceId: choice.id })}>
+                      <span>{choice.label}</span>
+                      <small>{choice.effectSummary}</small>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {event && !surprise && !state.ending && !eventIntroComplete && (
               <div className="conversation-actions event-progress">
                 <span>{eventBeatIndex + 1} / {eventBeats.length}</span>
                 <button type="button" className="advance" onClick={() => setEventBeatIndex((index) => index + 1)}>
@@ -251,7 +344,7 @@ function App() {
               </div>
             )}
 
-            {event && !state.ending && eventIntroComplete && (
+            {event && !surprise && !state.ending && eventIntroComplete && (
               <div className="choices" role="group" aria-label="Lựa chọn sự kiện">
                 {event.choices.map((c) => (
                   <button key={c.id} type="button" className="choice" onClick={() => act({ type: 'CHOOSE_EVENT_OPTION', eventId: event.id, choiceId: c.id })}>
@@ -262,7 +355,7 @@ function App() {
               </div>
             )}
 
-            {!event && !state.ending && conversation && (
+            {!event && !surprise && !state.ending && conversation && (
               <div className="conversation-actions">
                 <span>{conversation.index + 1} / {conversation.beats.length}</span>
                 <button
@@ -282,7 +375,7 @@ function App() {
               </div>
             )}
 
-            {!event && !state.ending && !conversation && (
+            {!event && !surprise && !state.ending && !conversation && (
               <>
                 <div className="activity-rail" role="list" aria-label="Chọn hoạt động">
                   {content.activities.map((a) => {
@@ -321,7 +414,7 @@ function App() {
 
                 <div className="dialogue-actions">
                   <button type="button" className="advance" disabled={!canAdvance} onClick={() => act({ type: 'ADVANCE_MONTH' })}>
-                    Sang tháng tiếp theo
+                    Sang mùa tiếp theo
                   </button>
                   <button
                     type="button"
@@ -353,22 +446,22 @@ function App() {
         </section>
       </div>
       {toast && <div className="game-toast" role="status">{toast}</div>}
-      <div className="month-transition" aria-hidden="true"><span>{yearLabel(state.month)}</span><strong>Tháng {state.month}</strong></div>
+      <div className="month-transition" aria-hidden="true"><span>{yearLabel(state.month)}</span><strong>{seasonLabel(state.month)}</strong></div>
       {menuOpen && (
         <div className="game-menu-backdrop" role="presentation" onMouseDown={() => setMenuOpen(false)}>
           <section className="game-menu" role="dialog" aria-modal="true" aria-labelledby="game-menu-title" onMouseDown={(event) => event.stopPropagation()}>
             <div className="menu-heading">
               <div><small>Tạm dừng</small><h2 id="game-menu-title">Bốn Năm Thanh Xuân</h2></div>
-              <button type="button" className="menu-close" onClick={() => setMenuOpen(false)} aria-label="Đóng menu">×</button>
+              <button type="button" className="menu-close" onClick={() => { gameAudio.play('click'); setMenuOpen(false); }} aria-label="Đóng menu">×</button>
             </div>
             <div className="save-summary">
-              <strong>{yearLabel(state.month)} · Tháng {state.month}</strong>
-              <span>{state.actionPoints} hành động còn lại · Tiến độ {Math.round((state.month / 48) * 100)}%</span>
+              <strong>{yearLabel(state.month)} · {seasonLabel(state.month)}</strong>
+              <span>{state.actionPoints} lựa chọn còn lại · Tiến độ {Math.round((state.month / 48) * 100)}%</span>
               <i><b style={{ width: `${(state.month / 48) * 100}%` }} /></i>
             </div>
             <div className="menu-options">
-              <button type="button" onClick={() => setMenuOpen(false)}>Tiếp tục chơi</button>
-              <button type="button" onClick={() => { const next = !soundOn; setSoundOn(next); localStorage.setItem('bon-nam-sound', next ? 'on' : 'off'); }}>Âm thanh <span>{soundOn ? 'Bật' : 'Tắt'}</span></button>
+              <button type="button" onClick={() => { gameAudio.play('click'); setMenuOpen(false); }}>Tiếp tục chơi</button>
+              <button type="button" onClick={() => { const next = !soundOn; setSoundOn(next); localStorage.setItem('bon-nam-sound', next ? 'on' : 'off'); if (next) window.setTimeout(() => gameAudio.play('choice'), 50); }}>Âm thanh <span>{soundOn ? 'Bật' : 'Tắt'}</span></button>
               <button type="button" onClick={() => { localStorage.setItem(KEY, JSON.stringify(state)); setToast('Đã lưu hành trình'); setMenuOpen(false); }}>Lưu hành trình</button>
               <button type="button" className="danger" onClick={() => { if (confirm('Xóa hành trình hiện tại và chơi lại từ đầu?')) { restart(); setMenuOpen(false); } }}>Chơi lại từ đầu</button>
             </div>
