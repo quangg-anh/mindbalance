@@ -4,10 +4,10 @@
 
 ```mermaid
 graph TD
-  Web[apps/web React PWA] -->|commands| Core[packages/game-core]
+  Web[frontend React PWA] -->|commands| Core[packages/game-core]
   Content[packages/game-content] -->|validated data| Core
-  Web -->|milestone/debounce sync| API[apps/api Cloudflare Worker]
-  API --> Storage[(D1/KV)]
+  Web -->|milestone/debounce sync| API[backend Node API]
+  API --> Storage[(PostgreSQL/Redis/KV)]
   Shared[packages/shared contracts] --> Web
   Shared --> API
   Shared --> Content
@@ -19,8 +19,8 @@ graph TD
 - `packages/game-core`: domain thuần; không DOM, React, storage, fetch, Cloudflare API.
 - `packages/game-content`: content typed, Zod schema, validator graph và asset reference.
 - `packages/shared`: API contract, constants, validation dùng chung.
-- `apps/web`: adapter persistence/localStorage, React UI, PWA và cloud sync queue.
-- `apps/api`: Worker routing, auth session ẩn danh, save/profile/ending persistence.
+- `frontend`: adapter persistence/localStorage, React UI, PWA và cloud sync queue.
+- `backend`: Node HTTP routing, auth session ẩn danh và abstraction lưu save; phù hợp VPS/Render, có thể thêm serverless adapter.
 
 ## Game core
 

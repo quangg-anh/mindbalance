@@ -1,0 +1,1 @@
+{"name":"@game/backend","version":"1.0.0","private":true,"type":"module","scripts":{"dev":"tsx watch src/server.ts","build":"tsc -b","start":"node dist/server.js"},"dependencies":{"@game/shared":"*"},"devDependencies":{"@types/node":"^24.1.0","tsx":"^4.20.3"},"engines":{"node":">=22"}}

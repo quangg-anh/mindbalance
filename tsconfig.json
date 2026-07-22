@@ -2,6 +2,6 @@
   "files": [],
   "references": [
     { "path": "packages/shared" }, { "path": "packages/game-content" },
-    { "path": "packages/game-core" }, { "path": "apps/web" }, { "path": "apps/api" }
+    { "path": "packages/game-core" }, { "path": "frontend" }, { "path": "backend" }
   ]
 }
