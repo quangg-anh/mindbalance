@@ -1,2 +1,387 @@
-import React from 'react';import{createRoot}from'react-dom/client';import{content}from'@game/game-content';import{dispatch,initialState,type GameState,importLegacy}from'@game/game-core';import'./style.css';
-const KEY='bon-nam-save-0';function App(){const[state,setState]=React.useState<GameState>(()=>{const raw=localStorage.getItem(KEY);if(raw)try{return JSON.parse(raw) as GameState}catch{}const legacy=importLegacy(k=>localStorage.getItem(k))[0];return legacy?.save.state??initialState(Date.now());});const act=(command:Parameters<typeof dispatch>[1])=>setState(s=>{const n=dispatch(s,command,content);localStorage.setItem(KEY,JSON.stringify(n));return n});const event=content.events.find(e=>e.id===state.pendingEvent);return <main><header><p className="eyebrow">Bốn Năm Thanh Xuân</p><h1>Tháng {state.month} · Năm {Math.ceil(state.month/12)}</h1><p>Minh có <strong>{state.actionPoints} hành động</strong> tháng này.</p></header><section className="stats" aria-label="Chỉ số" aria-live="polite">{Object.entries(state.stats).map(([k,v])=><div key={k}><span>{k}</span><strong>{v}</strong></div>)}</section>{event?<section className="event" role="dialog" aria-labelledby="event-title"><h2 id="event-title">{event.title}</h2>{event.warning&&<aside>{event.warning}</aside>}{event.choices.map(c=><button key={c.id} onClick={()=>act({type:'CHOOSE_EVENT_OPTION',eventId:event.id,choiceId:c.id})}>{c.label}<small>{c.effectSummary}</small></button>)}</section>:<><section><h2>Chọn hoạt động</h2><div className="activities">{content.activities.map(a=><button disabled={!state.actionPoints||state.month===48} key={a.id} onClick={()=>act({type:'SELECT_ACTIVITY',activityId:a.id})}><strong>{a.name}</strong><small>{a.description}</small></button>)}</div></section><button className="advance" disabled={state.actionPoints>0||state.month===48} onClick={()=>act({type:'ADVANCE_MONTH'})}>Sang tháng tiếp theo</button></>}<footer><button onClick={()=>confirm('Dừng toàn bộ hành trình?')&&act({type:'CONFIRM_STOP_JOURNEY'})}>Dừng hành trình</button><span aria-live="polite">{state.ending&&`Kết thúc: ${content.endings.find(e=>e.id===state.ending)?.name}`}</span></footer></main>}createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { content } from '@game/game-content';
+import { dispatch, initialState, type GameState, importLegacy, type Command } from '@game/game-core';
+import {
+  activityDialogues,
+  activityScenes,
+  backgrounds,
+  eventDialogues,
+  eventScenes,
+  portraits,
+  type BackgroundId,
+  type DialogueBeat,
+  type PortraitId,
+} from './assets';
+import './style.css';
+
+const KEY = 'bon-nam-save-0';
+
+const STAT_LABELS: Record<string, string> = {
+  health: 'Sức khỏe',
+  spirit: 'Tinh thần',
+  knowledge: 'Kiến thức',
+  skill: 'Kỹ năng',
+  morality: 'Đạo đức',
+  money: 'Tiền',
+  debt: 'Nợ',
+};
+
+function loadState(): GameState {
+  const raw = localStorage.getItem(KEY);
+  if (raw) {
+    try {
+      return JSON.parse(raw) as GameState;
+    } catch {
+      /* fall through */
+    }
+  }
+  const legacy = importLegacy((k) => localStorage.getItem(k))[0];
+  return legacy?.save.state ?? initialState(Date.now());
+}
+
+function yearLabel(month: number) {
+  return `Năm ${Math.min(4, Math.ceil(month / 12) || 1)}`;
+}
+
+function StageCast({ cast, spotlight }: { cast: PortraitId[]; spotlight?: PortraitId | null }) {
+  const shown = cast.slice(0, 3);
+  return (
+    <div className={`cast ${shown.length === 1 ? 'is-solo' : 'is-group'}`} aria-hidden="true">
+      {shown.map((id, index) => (
+        <figure
+          key={`${id}-${index}`}
+          className={`portrait ${spotlight === id || (spotlight === undefined && index === 0) ? 'is-focus' : 'is-support'} pos-${index}`}
+        >
+          <img src={portraits[id]} alt="" />
+        </figure>
+      ))}
+    </div>
+  );
+}
+
+function StatBars({ stats }: { stats: GameState['stats'] }) {
+  const keys = ['health', 'spirit', 'knowledge', 'skill', 'money'] as const;
+  return (
+    <ul className="hud-stats" aria-label="Chỉ số">
+      {keys.map((key) => {
+        const value = stats[key] ?? 0;
+        const max = key === 'money' ? Math.max(100, value) : 100;
+        const pct = Math.max(0, Math.min(100, (value / max) * 100));
+        return (
+          <li key={key}>
+            <span>{STAT_LABELS[key]}</span>
+            <div className="bar" role="meter" aria-valuenow={value} aria-valuemin={0} aria-valuemax={max} aria-label={STAT_LABELS[key]}>
+              <i style={{ width: `${pct}%` }} />
+            </div>
+            <strong>{value}</strong>
+          </li>
+        );
+      })}
+      {(stats.debt ?? 0) > 0 && (
+        <li className="debt">
+          <span>{STAT_LABELS.debt}</span>
+          <strong>{stats.debt}</strong>
+        </li>
+      )}
+    </ul>
+  );
+}
+
+function App() {
+  const [state, setState] = React.useState<GameState>(loadState);
+  const [previewActivity, setPreviewActivity] = React.useState<string | null>(null);
+  const [conversation, setConversation] = React.useState<{ activityId: string; beats: DialogueBeat[]; index: number } | null>(null);
+  const [eventBeatIndex, setEventBeatIndex] = React.useState(0);
+  const [leaving, setLeaving] = React.useState(false);
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const [soundOn, setSoundOn] = React.useState(() => localStorage.getItem('bon-nam-sound') !== 'off');
+  const [transitioning, setTransitioning] = React.useState(false);
+  const [toast, setToast] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 1800);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  React.useEffect(() => {
+    setEventBeatIndex(0);
+  }, [state.pendingEvent]);
+
+  React.useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen((open) => !open);
+      if (menuOpen || (event.key !== 'Enter' && event.key !== ' ')) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('button, input, textarea, select, a')) return;
+      const currentEventBeats = state.pendingEvent ? eventDialogues[state.pendingEvent] ?? [] : [];
+      if (currentEventBeats.length > 0 && eventBeatIndex < currentEventBeats.length - 1) {
+        event.preventDefault();
+        setEventBeatIndex((index) => index + 1);
+      } else if (conversation) {
+        event.preventDefault();
+        setConversation((current) => {
+          if (!current) return null;
+          return current.index < current.beats.length - 1 ? { ...current, index: current.index + 1 } : null;
+        });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [conversation, eventBeatIndex, menuOpen, state.pendingEvent]);
+
+  const restart = () => {
+    const next = initialState(Date.now());
+    localStorage.setItem(KEY, JSON.stringify(next));
+    setPreviewActivity(null);
+    setConversation(null);
+    setLeaving(false);
+    setState(next);
+  };
+
+  const act = (command: Command) => {
+    const monthChange = command.type === 'ADVANCE_MONTH';
+    if (monthChange) setTransitioning(true);
+    setState((s) => {
+      const next = dispatch(s, command, content);
+      localStorage.setItem(KEY, JSON.stringify(next));
+      return next;
+    });
+    setPreviewActivity(null);
+    if (monthChange) {
+      window.setTimeout(() => setTransitioning(false), 650);
+      setToast('Tháng mới bắt đầu');
+    } else if (command.type === 'SELECT_ACTIVITY') {
+      setToast('Đã cập nhật chỉ số');
+    }
+  };
+
+  const event = content.events.find((e) => e.id === state.pendingEvent);
+  const ending = content.endings.find((e) => e.id === state.ending);
+  const eventBeats = event ? eventDialogues[event.id] ?? [] : [];
+  const eventBeat = eventBeats[eventBeatIndex];
+  const eventIntroComplete = !event || eventBeats.length === 0 || eventBeatIndex >= eventBeats.length - 1;
+  const activeActivity = conversation?.activityId ?? previewActivity;
+  const activeBeat = conversation?.beats[conversation.index];
+
+  let bg: BackgroundId = 'dorm';
+  let cast: PortraitId[] = ['minh'];
+  let speaker = 'Minh';
+  const apLeft = state.actionPoints;
+  let line =
+    apLeft <= 0
+      ? 'Tháng này Minh đã dùng hết hành động. Có thể sang tháng tiếp theo.'
+      : apLeft === 1
+        ? 'Còn một lựa chọn trong tháng này. Minh sẽ dùng nó thế nào?'
+        : `Minh còn ${apLeft} lựa chọn để viết tiếp câu chuyện của mình.`;
+  let title = `${yearLabel(state.month)} · Tháng ${state.month}`;
+
+  if (ending) {
+    bg = ending.group === 'happy' ? 'campus' : ending.group === 'bad' ? 'dorm' : 'classroom';
+    cast = ['minh'];
+    speaker = 'Kết thúc';
+    line = ending.name;
+    title = 'Hành trình khép lại';
+  } else if (event) {
+    const scene = eventScenes[event.id] ?? { bg: 'campus' as const, cast: ['minh'] as PortraitId[], line: event.title };
+    bg = scene.bg;
+    cast = scene.cast;
+    const eventSpeaker = eventBeat?.speaker;
+    speaker = eventSpeaker === 'narrator' || !eventSpeaker
+      ? '…'
+      : content.characters.find((c) => c.id === eventSpeaker)?.name ?? 'Minh';
+    line = eventBeat?.line ?? scene.line;
+    if (event.warning && eventBeatIndex === 0) line = `${event.warning}\n\n${line}`;
+    title = event.title;
+  } else if (activeActivity && activityScenes[activeActivity]) {
+    const scene = activityScenes[activeActivity]!;
+    bg = scene.bg;
+    cast = scene.cast;
+    const speakerId = activeBeat?.speaker ?? cast[0];
+    speaker =
+      content.characters.find((c) => c.id === speakerId)?.name ??
+      (speakerId === 'ong-tu' ? 'Ông Tư' : 'Minh');
+    line = activeBeat?.line ?? scene.vibe;
+    title = content.activities.find((a) => a.id === activeActivity)?.name ?? title;
+  } else {
+    bg = 'dorm';
+    cast = ['minh'];
+  }
+
+  const canAct = state.actionPoints > 0 && state.month < 48 && !state.ending;
+  const canAdvance = state.actionPoints === 0 && state.month < 48 && !state.ending && !event;
+
+  return (
+    <div className={`game ${leaving ? 'is-leaving' : ''} ${transitioning ? 'is-transitioning' : ''}`}>
+      <div className="stage" style={{ backgroundImage: `url(${backgrounds[bg]})` }}>
+        <div className="stage-veil" />
+        <header className="hud">
+          <div className="brand-block">
+            <p className="brand">Bốn Năm Thanh Xuân</p>
+            <p className="chapter">{title}</p>
+          </div>
+          <div className="ap" aria-live="polite">
+            <span>Hành động</span>
+            <strong>{state.actionPoints}</strong>
+          </div>
+          <button type="button" className="menu-button" onClick={() => setMenuOpen(true)} aria-label="Mở menu game">
+            ☰
+          </button>
+        </header>
+
+        <StageCast
+          cast={cast}
+          spotlight={event ? (eventBeat?.speaker === 'narrator' ? null : eventBeat?.speaker) : (activeBeat?.speaker ?? cast[0])}
+        />
+
+        <StatBars stats={state.stats} />
+
+        <section className="dialogue" aria-live="polite">
+          <div className="dialogue-sheet">
+            <p className="speaker">{speaker}</p>
+            <p className="line" style={{ whiteSpace: 'pre-wrap' }}>{line}</p>
+
+            {event && !state.ending && !eventIntroComplete && (
+              <div className="conversation-actions event-progress">
+                <span>{eventBeatIndex + 1} / {eventBeats.length}</span>
+                <button type="button" className="advance" onClick={() => setEventBeatIndex((index) => index + 1)}>
+                  Tiếp tục
+                </button>
+              </div>
+            )}
+
+            {event && !state.ending && eventIntroComplete && (
+              <div className="choices" role="group" aria-label="Lựa chọn sự kiện">
+                {event.choices.map((c) => (
+                  <button key={c.id} type="button" className="choice" onClick={() => act({ type: 'CHOOSE_EVENT_OPTION', eventId: event.id, choiceId: c.id })}>
+                    <span>{c.label}</span>
+                    <small>{c.effectSummary}</small>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {!event && !state.ending && conversation && (
+              <div className="conversation-actions">
+                <span>{conversation.index + 1} / {conversation.beats.length}</span>
+                <button
+                  type="button"
+                  className="advance"
+                  onClick={() => {
+                    if (conversation.index < conversation.beats.length - 1) {
+                      setConversation({ ...conversation, index: conversation.index + 1 });
+                    } else {
+                      setConversation(null);
+                      setPreviewActivity(null);
+                    }
+                  }}
+                >
+                  {conversation.index < conversation.beats.length - 1 ? 'Tiếp tục' : 'Trở lại lựa chọn'}
+                </button>
+              </div>
+            )}
+
+            {!event && !state.ending && !conversation && (
+              <>
+                <div className="activity-rail" role="list" aria-label="Chọn hoạt động">
+                  {content.activities.map((a) => {
+                    const scene = activityScenes[a.id];
+                    const disabled = !canAct;
+                    return (
+                      <button
+                        key={a.id}
+                        type="button"
+                        role="listitem"
+                        data-id={a.id}
+                        className={`activity-chip ${previewActivity === a.id ? 'is-active' : ''}`}
+                        disabled={disabled}
+                        onMouseEnter={() => !disabled && setPreviewActivity(a.id)}
+                        onFocus={() => !disabled && setPreviewActivity(a.id)}
+                        onClick={() => {
+                          act({ type: 'SELECT_ACTIVITY', activityId: a.id });
+                          const beats = activityDialogues[a.id];
+                          if (beats?.length) setConversation({ activityId: a.id, beats, index: 0 });
+                        }}
+                      >
+                        <span className="activity-thumb" style={scene ? { backgroundImage: `url(${backgrounds[scene.bg]})` } : undefined}>
+                          <span className="activity-mark" aria-hidden="true" />
+                        </span>
+                        <span className="activity-copy">
+                          <strong>{a.name}</strong>
+                          <small>{a.description}</small>
+                        </span>
+                        {scene?.cast[1] && (
+                          <img className="activity-buddy" src={portraits[scene.cast[1]!]} alt="" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="dialogue-actions">
+                  <button type="button" className="advance" disabled={!canAdvance} onClick={() => act({ type: 'ADVANCE_MONTH' })}>
+                    Sang tháng tiếp theo
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => {
+                      if (confirm('Dừng toàn bộ hành trình?')) {
+                        setLeaving(true);
+                        act({ type: 'CONFIRM_STOP_JOURNEY' });
+                      }
+                    }}
+                  >
+                    Dừng hành trình
+                  </button>
+                </div>
+              </>
+            )}
+
+            {state.ending && (
+              <div className="ending-actions">
+                <p className="ending-note" aria-live="polite">
+                  {ending?.group === 'happy' ? 'Một kết thúc ấm.' : ending?.group === 'bad' ? 'Một kết thúc nặng.' : 'Một kết thúc mở.'}
+                </p>
+                <button type="button" className="advance" onClick={restart}>
+                  Bắt đầu hành trình mới
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+      {toast && <div className="game-toast" role="status">{toast}</div>}
+      <div className="month-transition" aria-hidden="true"><span>{yearLabel(state.month)}</span><strong>Tháng {state.month}</strong></div>
+      {menuOpen && (
+        <div className="game-menu-backdrop" role="presentation" onMouseDown={() => setMenuOpen(false)}>
+          <section className="game-menu" role="dialog" aria-modal="true" aria-labelledby="game-menu-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="menu-heading">
+              <div><small>Tạm dừng</small><h2 id="game-menu-title">Bốn Năm Thanh Xuân</h2></div>
+              <button type="button" className="menu-close" onClick={() => setMenuOpen(false)} aria-label="Đóng menu">×</button>
+            </div>
+            <div className="save-summary">
+              <strong>{yearLabel(state.month)} · Tháng {state.month}</strong>
+              <span>{state.actionPoints} hành động còn lại · Tiến độ {Math.round((state.month / 48) * 100)}%</span>
+              <i><b style={{ width: `${(state.month / 48) * 100}%` }} /></i>
+            </div>
+            <div className="menu-options">
+              <button type="button" onClick={() => setMenuOpen(false)}>Tiếp tục chơi</button>
+              <button type="button" onClick={() => { const next = !soundOn; setSoundOn(next); localStorage.setItem('bon-nam-sound', next ? 'on' : 'off'); }}>Âm thanh <span>{soundOn ? 'Bật' : 'Tắt'}</span></button>
+              <button type="button" onClick={() => { localStorage.setItem(KEY, JSON.stringify(state)); setToast('Đã lưu hành trình'); setMenuOpen(false); }}>Lưu hành trình</button>
+              <button type="button" className="danger" onClick={() => { if (confirm('Xóa hành trình hiện tại và chơi lại từ đầu?')) { restart(); setMenuOpen(false); } }}>Chơi lại từ đầu</button>
+            </div>
+            <p className="menu-hint">ESC mở menu · Enter tiếp tục hội thoại</p>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
+
+createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+);
