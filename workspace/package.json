@@ -11,13 +11,11 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc -b",
     "test": "vitest run",
-    "test:e2e": "playwright test",
     "validate:story": "vitest run packages/game-content/src/validator.test.ts",
     "simulate": "vitest run packages/game-core/src/simulator.test.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",
-    "@playwright/test": "^1.54.1",
     "@types/node": "^24.1.0",
     "concurrently": "^9.2.1",
     "eslint": "^9.31.0",

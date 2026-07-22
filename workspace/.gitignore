@@ -4,7 +4,6 @@ dist-types/
 *.tsbuildinfo
 coverage/
 test-results/
-playwright-report/
 .wrangler/
 .env*
 !.env.example

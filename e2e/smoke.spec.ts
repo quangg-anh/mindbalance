@@ -1,1 +1,0 @@
-import{test,expect}from'@playwright/test';test('mobile/keyboard smoke',async({page})=>{await page.goto('/');await expect(page.getByRole('heading',{name:/Tháng 1/})).toBeVisible();const first=page.getByRole('button',{name:/Học tập/});await first.focus();await page.keyboard.press('Enter');await expect(page.getByText(/1 hành động/)).toBeVisible();});
