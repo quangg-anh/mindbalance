@@ -1,0 +1,6 @@
+import { z } from 'zod'; import { SAVE_SCHEMA_VERSION } from '@game/shared'; import type { GameState } from './types.js'; import { initialState } from './engine.js';
+export interface SaveEnvelope{version:number;revision:number;savedAt:string;state:GameState}
+const envelope=z.object({version:z.number().int(),revision:z.number().int().nonnegative(),savedAt:z.string(),state:z.record(z.unknown())});
+export function migrateSave(raw:unknown):SaveEnvelope{const p=envelope.parse(raw);let state=p.state as unknown as GameState;if(p.version===1)state={...initialState(state.seed??1),...state,schemaVersion:2,rngVersion:'mulberry32-v1'};if(p.version> SAVE_SCHEMA_VERSION)throw new Error('Save từ phiên bản mới hơn');return {version:SAVE_SCHEMA_VERSION,revision:p.revision,savedAt:p.savedAt,state};}
+export const legacyKeys=['vn_slot_0','vn_slot_1','vn_slot_2','vn_slot_3'] as const;
+export function importLegacy(get:(key:string)=>string|null):Array<{key:string;save:SaveEnvelope}>{return legacyKeys.flatMap((key,i)=>{const value=get(key);if(!value)return[];try{const old=JSON.parse(value) as {month?:number;stats?:Partial<GameState['stats']>};const state=initialState(i+1);state.month=Math.max(1,Math.min(48,old.month??1));state.stats={...state.stats,...old.stats};return [{key,save:{version:2,revision:0,savedAt:new Date(0).toISOString(),state}}];}catch{return[];}});}

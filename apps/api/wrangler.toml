@@ -1,0 +1,16 @@
+name = "bon-nam-thanh-xuan-api"
+main = "src/worker.ts"
+compatibility_date = "2025-07-26"
+workers_dev = false
+
+[[kv_namespaces]]
+binding = "SAVES"
+id = "REPLACE_PRODUCTION_KV_ID"
+preview_id = "REPLACE_PREVIEW_KV_ID"
+
+[vars]
+CORS_ORIGIN = "https://example.com"
+
+[env.staging]
+name = "bon-nam-thanh-xuan-api-staging"
+vars = { CORS_ORIGIN = "https://staging.example.com" }

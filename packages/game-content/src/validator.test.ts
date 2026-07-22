@@ -1,0 +1,2 @@
+import { describe,it,expect } from 'vitest'; import { content } from './data.js'; import { validateStory } from './validator.js';
+describe('story validator',()=>{it('xác thực domain chuẩn',()=>{const c=validateStory(content);expect(c.activities).toHaveLength(10);expect(c.endings).toHaveLength(14);expect(c.characters.map(x=>x.name)).toEqual(['Minh','Lan','Huy','Phong','Mai','Ông Tư','Cha','Mẹ']);});});

@@ -1,0 +1,11 @@
+import { z } from 'zod';
+export const StatsSchema = z.object({ health:z.number(), spirit:z.number(), knowledge:z.number(), skill:z.number(), morality:z.number(), money:z.number(), debt:z.number() }).partial();
+export const EffectsSchema = z.object({ stats:StatsSchema.optional(), relationships:z.record(z.number()).optional(), traits:z.record(z.number()).optional(), flags:z.record(z.boolean()).optional() });
+export const ConditionSchema = z.object({ field:z.string(), op:z.enum(['eq','gte','lte']), value:z.union([z.number(),z.string(),z.boolean()]) });
+export const ChoiceSchema = z.object({ id:z.string(), label:z.string(), effectSummary:z.string(), effects:EffectsSchema, delayed:z.array(z.object({ afterMonths:z.number().int().positive(), effects:EffectsSchema })).default([]) });
+export const ActivitySchema = z.object({ id:z.string(), name:z.string(), description:z.string(), effects:EffectsSchema, delayed:z.array(z.object({ afterMonths:z.number().int().positive(), effects:EffectsSchema })).default([]) });
+export const EventSchema = z.object({ id:z.string(), title:z.string(), month:z.number().int().min(1).max(48).optional(), deadline:z.number().int().min(1).max(48).optional(), weight:z.number().positive(), prerequisite:z.array(ConditionSchema).default([]), cooldown:z.number().int().nonnegative().default(0), oneShot:z.boolean().default(true), mandatory:z.boolean().default(false), warning:z.string().optional(), choices:z.array(ChoiceSchema).min(1) });
+export const EndingSchema = z.object({ id:z.string(), name:z.string(), group:z.enum(['happy','neutral','bad']), priority:z.number().int(), conditions:z.array(ConditionSchema).min(1) });
+export const CharacterSchema = z.object({ id:z.string(), name:z.string(), role:z.string() });
+export const ContentSchema = z.object({ characters:z.array(CharacterSchema), activities:z.array(ActivitySchema), events:z.array(EventSchema), endings:z.array(EndingSchema) });
+export type Effects=z.infer<typeof EffectsSchema>; export type Condition=z.infer<typeof ConditionSchema>; export type GameContent=z.infer<typeof ContentSchema>;

@@ -1,0 +1,1 @@
+{"name":"@game/game-core","version":"1.0.0","type":"module","exports":"./dist/index.js","types":"./dist/index.d.ts","scripts":{"build":"tsc -b"},"dependencies":{"@game/game-content":"*","@game/shared":"*","zod":"^3.25.76"}}
