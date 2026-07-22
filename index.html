@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Visual Novel — Cuộc Sống Sinh Viên. Trải nghiệm 4 năm đại học với 14 endings khác nhau.">
+  <title>Cuộc Sống Sinh Viên — Visual Novel</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ======== TITLE SCREEN ======== -->
+  <div id="title-screen" class="active">
+    <div class="title-bg"></div>
+    <div class="particles" id="particles"></div>
+    <div class="title-characters-container">
+      <img class="title-character-male" src="assets/images/nam_vui.png" alt="Nhân vật nam">
+      <img class="title-character-female" src="assets/images/nu_vui.png" alt="Nhân vật nữ">
+    </div>
+    <div class="title-left">
+      <div class="title-logo">VISUAL NOVEL</div>
+      <h1 class="title-main">Cuộc Sống<br>Sinh Viên</h1>
+      <p class="title-sub">Hành trình <span>4 năm đại học</span> — 14 endings chờ bạn</p>
+      <div class="title-menu">
+        <button class="title-btn" id="btn-continue" disabled>
+          <span>▶</span> Tiếp Tục
+        </button>
+        <button class="title-btn" id="btn-new-game">
+          <span>🎮</span> Bắt Đầu Mới
+        </button>
+        <button class="title-btn" id="btn-settings">
+          <span>⚙️</span> Tùy Chỉnh
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== SAVE SLOT MODAL ======== -->
+  <div class="modal-overlay" id="slot-modal">
+    <div class="modal-panel slot-panel">
+      <h2 id="slot-modal-title">💾 Chọn Ô Lưu</h2>
+      <div class="slot-list" id="slot-list"></div>
+      <button class="modal-close-btn" id="btn-slot-back">← Quay lại</button>
+    </div>
+  </div>
+
+  <!-- ======== GENDER SELECT MODAL ======== -->
+  <div class="modal-overlay" id="gender-modal">
+    <div class="modal-panel gender-panel">
+      <h2>🎭 Chọn & Đặt Tên Nhân Vật</h2>
+      <div class="gender-options">
+        <button class="gender-card" id="btn-gender-male" type="button">
+          <div class="gender-preview" id="preview-male"></div>
+          <div class="gender-label">🧑 Nam</div>
+          <div class="gender-name">Mặc định: Minh</div>
+        </button>
+        <button class="gender-card" id="btn-gender-female" type="button">
+          <div class="gender-preview" id="preview-female"></div>
+          <div class="gender-label">👩 Nữ</div>
+          <div class="gender-name">Mặc định: Mai</div>
+        </button>
+      </div>
+      <div class="name-input-group">
+        <label for="player-name-input">✏️ Tên nhân vật của bạn:</label>
+        <input type="text" id="player-name-input" class="name-input" placeholder="Nhập tên nhân vật..." maxlength="20" autocomplete="off">
+      </div>
+      <button class="modal-close-btn primary-btn" id="btn-gender-confirm" style="margin-top:14px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;border-color:var(--primary)">🎮 Xác nhận & Bắt đầu</button>
+      <button class="modal-close-btn" id="btn-gender-back" style="margin-top:8px">← Quay lại</button>
+    </div>
+  </div>
+
+  <!-- ======== SETTINGS MODAL ======== -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal-panel settings-panel">
+      <h2>⚙️ Tùy Chỉnh</h2>
+
+      <div class="setting-group">
+        <div class="setting-label">🔊 Âm lượng nhạc nền</div>
+        <div class="setting-row">
+          <input type="range" class="setting-slider" id="vol-bgm" min="0" max="100" value="70">
+          <span class="setting-val" id="vol-bgm-val">70%</span>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <div class="setting-label">🔔 Âm lượng hiệu ứng</div>
+        <div class="setting-row">
+          <input type="range" class="setting-slider" id="vol-sfx" min="0" max="100" value="80">
+          <span class="setting-val" id="vol-sfx-val">80%</span>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <div class="setting-label">✨ Đồ họa</div>
+        <div class="setting-options" id="opt-graphics">
+          <button class="opt-btn" data-val="low">Thấp</button>
+          <button class="opt-btn active" data-val="medium">Trung bình</button>
+          <button class="opt-btn" data-val="high">Cao</button>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <div class="setting-label">🔤 Kích thước chữ</div>
+        <div class="setting-options" id="opt-fontsize">
+          <button class="opt-btn" data-val="small">Nhỏ</button>
+          <button class="opt-btn active" data-val="medium">Vừa</button>
+          <button class="opt-btn" data-val="large">Lớn</button>
+        </div>
+      </div>
+
+      <button class="modal-close-btn" id="btn-settings-close">✓ Lưu & Đóng</button>
+    </div>
+  </div>
+
+  <!-- ======== GAME SCREEN ======== -->
+  <div id="game-screen">
+    <div class="game-bg" id="bg-image"></div>
+    <div class="game-topbar">
+      <div class="time-hud" id="time-hud">Năm 1 - HK 1 - Tháng 1</div>
+      <div class="game-topbar-right">
+        <button class="top-btn" id="btn-profile" title="Profile">👤</button>
+        <button class="top-btn" id="btn-menu" title="Menu">☰</button>
+      </div>
+    </div>
+    <div class="char-area" id="char-sprite"></div>
+    <div class="choices-container" id="choices-container"></div>
+    <div class="dialogue-box" id="dialogue-box">
+      <div class="speaker-name" id="speaker-name"></div>
+      <div class="dialogue-text" id="dialogue-text"></div>
+      <div class="continue-indicator" id="continue-indicator">▼ Click để tiếp tục</div>
+    </div>
+    <div class="chapter-overlay" id="chapter-overlay">
+      <div class="chapter-title-text" id="chapter-title-text"></div>
+    </div>
+  </div>
+
+  <!-- ======== PROFILE MODAL ======== -->
+  <div class="modal-overlay" id="profile-modal">
+    <div class="modal-panel profile-panel">
+      <h2>👤 Hồ Sơ Nhân Vật</h2>
+      <div id="profile-stats"></div>
+      <button class="modal-close-btn" id="btn-close-profile">Đóng</button>
+    </div>
+  </div>
+
+  <!-- ======== MENU OVERLAY ======== -->
+  <div class="modal-overlay" id="menu-overlay">
+    <div class="modal-panel menu-panel-inner">
+      <h2>📋 Menu</h2>
+      <button class="menu-btn" id="btn-menu-resume"><span>▶</span> Tiếp tục</button>
+      <button class="menu-btn" id="btn-menu-save"><span>💾</span> Lưu game</button>
+      <button class="menu-btn" id="btn-menu-settings"><span>⚙️</span> Tùy chỉnh</button>
+      <button class="menu-btn" id="btn-menu-title"><span>🏠</span> Về trang chính</button>
+      <button class="menu-btn danger" id="btn-menu-skip"><span>🚪</span> Bỏ học (Bad End)</button>
+    </div>
+  </div>
+
+  <!-- ======== ENDING SCREEN ======== -->
+  <div id="ending-screen">
+    <div class="ending-card">
+      <h2 class="ending-title" id="ending-title" data-type=""></h2>
+      <div class="ending-story" id="ending-story"></div>
+      <div class="ending-final-stats" id="ending-final-stats"><h4>📊 Chỉ số cuối cùng</h4></div>
+      <button class="btn-restart" id="btn-restart">🔄 Chơi lại</button>
+    </div>
+  </div>
+
+  <!-- Notification -->
+  <div class="notification" id="notification"></div>
+  
+  <div id="error-log" style="position:fixed;top:0;left:0;background:red;color:white;z-index:9999;font-size:12px;padding:10px;display:none;width:100%;"></div>
+  <script>
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+      const log = document.getElementById('error-log');
+      log.style.display = 'block';
+      log.innerHTML += `<p>${msg} at line ${lineNo}</p>`;
+      return false;
+    };
+  </script>
+
+  <script src="js/config.js"></script>
+  <script src="js/stats.js"></script>
+  <script src="js/endings.js"></script>
+  <script src="js/story.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
