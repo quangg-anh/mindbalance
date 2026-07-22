@@ -1,1 +1,0 @@
-{"extends":"../tsconfig.base.json","compilerOptions":{"jsx":"react-jsx","rootDir":"src","outDir":"dist-types","declaration":true,"composite":true},"include":["src"],"references":[{"path":"../packages/game-core"},{"path":"../packages/game-content"}]}

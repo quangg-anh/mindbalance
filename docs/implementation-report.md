@@ -5,7 +5,7 @@ Ngày: 22/07/2026
 ## Phạm vi hoàn thành
 
 - Kiểm toán `docs/product/game-story.md`, `docs/product/legacy-audit.md` và toàn bộ source legacy.
-- Tạo monorepo TypeScript strict với `frontend`, `backend`, `packages/game-core`, `packages/game-content`, `packages/shared`.
+- Tách `frontend` và `backend` thành hai project độc lập; domain packages nằm trong từng project.
 - Game core thuần: 48 tháng, 2 action point/tháng, command/reducer, seeded RNG, scheduler, delayed consequence, relationship/trait riêng.
 - Content có Zod schema, nhân vật canonical, 10 activity, event bắt buộc bốn năm và đúng 14 ending.
 - Save schema version 2, RNG state và migration `vn_slot_0..3`.
@@ -19,9 +19,9 @@ Ngày: 22/07/2026
 
 - Tooling: `package.json`, `package-lock.json`, `tsconfig*.json`, `eslint.config.mjs`, `vitest.config.ts`, `playwright.config.ts`.
 - CI: `.github/workflows/ci.yml`.
-- Core: `packages/game-core/src/*`.
-- Content: `packages/game-content/src/*`.
-- Shared: `packages/shared/src/*`.
+- Core: `frontend/packages/game-core/src/*`.
+- Content: `frontend/packages/game-content/src/*`.
+- Shared: `frontend/packages/shared` và `backend/packages/shared`.
 - Web: `frontend/*`.
 - API: `backend/*`.
 - E2E: `e2e/smoke.spec.ts`.
@@ -29,11 +29,7 @@ Ngày: 22/07/2026
 
 ## Kiểm tra đã chạy
 
-- `npm run lint`: đạt.
-- `npm run typecheck`: đạt.
-- `npm test`: 5 suite, 23 test đạt.
-- `npm run build`: đạt cho backend Node, web PWA và ba package.
-- `npm run test:e2e`: 2 test đạt trên Chromium desktop và Pixel 7 profile.
+- Trong `frontend` và `backend`: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` đạt.
 
 ## Giới hạn còn lại
 

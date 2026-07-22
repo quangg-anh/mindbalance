@@ -1,25 +1,41 @@
 # Bốn Năm Thanh Xuân
 
-Monorepo production tách rõ frontend, backend và domain dùng chung.
+Frontend và Backend tách thành hai project độc lập.
 
-## Monorepo
+## Cấu trúc
 
-- `workspace/frontend`: service Vite React PWA, cổng `4173`.
-- `workspace/backend`: service API Node.js portable, cổng `8787`.
-- `workspace/packages`: domain, content và contract dùng chung.
-- `workspace`: npm workspace, TypeScript, ESLint và Vitest config.
-- `docs/product`: cốt truyện chuẩn và báo cáo kiểm toán legacy.
+- `frontend`: Vite React PWA (cổng `4173`) kèm domain packages (`game-core`, `game-content`, `shared`).
+- `backend`: Node.js API (cổng `8787`) kèm contract `shared`.
 - `docs`: kiến trúc, migration, bảo mật và vận hành.
+- `docs/product`: cốt truyện chuẩn và báo cáo kiểm toán legacy.
 
-## Chạy
+## Frontend
 
-Yêu cầu Node.js 22+. Chuyển vào `workspace`, chạy `npm install`, sau đó `npm run dev` để mở cả hai service. Frontend: `http://localhost:4173`. Backend: `http://localhost:8787`. Chạy riêng bằng `npm run dev:frontend` hoặc `npm run dev:backend`.
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-Trong `workspace`, kiểm tra bằng `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
+Kiểm tra: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
 
-## Deploy
+Deploy: `npm run build` rồi đưa `frontend/dist` lên Vercel, Render Static Site hoặc Nginx.
 
-- Frontend: build `npm run build -w @game/frontend`; deploy `frontend/dist` lên Vercel, Render Static Site hoặc Nginx.
-- Backend VPS/Render: build `npm run build -w @game/backend`; start `npm run start -w @game/backend`; cấu hình `PORT` và `CORS_ORIGINS`.
+## Backend
+
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+Kiểm tra: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
+
+Deploy VPS/Render: `npm run build` rồi `npm start`; cấu hình `PORT` và `CORS_ORIGINS`.
+
 - `MemoryStore` chỉ dành cho local. Process restart sẽ mất cloud save; production phải dùng PostgreSQL, Redis hoặc KV adapter.
 - Vercel backend cần serverless adapter và storage ngoài. API core tại `backend/src/app.ts` không phụ thuộc framework.
+
+## Lưu ý shared
+
+`@game/shared` có bản trong cả `frontend/packages/shared` và `backend/packages/shared`. Khi đổi API contract, cập nhật đồng bộ cả hai.

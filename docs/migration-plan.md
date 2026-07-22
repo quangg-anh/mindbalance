@@ -6,7 +6,7 @@ Không xóa legacy trước parity test. Mỗi phase tạo thay đổi nhỏ, ch
 
 ## Phase 1 — Tooling và test
 
-- npm workspaces, TypeScript strict, ESLint, Prettier, Vitest, Playwright.
+- Frontend và backend là hai npm project độc lập với TypeScript strict, ESLint, Vitest.
 - CI nền: install khóa dependency, lint, typecheck, unit, build.
 - Snapshot hành vi/save legacy phục vụ migration, không coi gameplay legacy là chuẩn.
 

@@ -4,21 +4,22 @@
 
 ```mermaid
 graph TD
-  Web[frontend React PWA] -->|commands| Core[packages/game-core]
-  Content[packages/game-content] -->|validated data| Core
+  Web[frontend React PWA] -->|commands| Core[frontend/packages/game-core]
+  Content[frontend/packages/game-content] -->|validated data| Core
   Web -->|milestone/debounce sync| API[backend Node API]
   API --> Storage[(PostgreSQL/Redis/KV)]
-  Shared[packages/shared contracts] --> Web
-  Shared --> API
-  Shared --> Content
+  SharedFE[frontend/packages/shared] --> Web
+  SharedFE --> Content
+  SharedBE[backend/packages/shared] --> API
 ```
 
-## Monorepo
+## Hai project độc lập
 
-- npm workspaces, TypeScript strict, project references khi có lợi.
-- `packages/game-core`: domain thuần; không DOM, React, storage, fetch, Cloudflare API.
-- `packages/game-content`: content typed, Zod schema, validator graph và asset reference.
-- `packages/shared`: API contract, constants, validation dùng chung.
+- `frontend` và `backend` là hai npm project riêng, không dùng chung một workspace root.
+- TypeScript strict; project references trong từng project khi có lợi.
+- `frontend/packages/game-core`: domain thuần; không DOM, React, storage, fetch, Cloudflare API.
+- `frontend/packages/game-content`: content typed, Zod schema, validator graph và asset reference.
+- `*/packages/shared`: API contract, constants, validation (bản đồng bộ ở frontend và backend).
 - `frontend`: adapter persistence/localStorage, React UI, PWA và cloud sync queue.
 - `backend`: Node HTTP routing, auth session ẩn danh và abstraction lưu save; phù hợp VPS/Render, có thể thêm serverless adapter.
 

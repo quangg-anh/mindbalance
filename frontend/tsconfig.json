@@ -1,0 +1,9 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/shared" },
+    { "path": "packages/game-content" },
+    { "path": "packages/game-core" },
+    { "path": "tsconfig.app.json" }
+  ]
+}
