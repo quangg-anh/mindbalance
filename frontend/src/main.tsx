@@ -4,6 +4,7 @@ import { content, surprisesById } from '@game/game-content';
 import { dispatch, initialState, type GameState, importLegacy, resolveEnding, type Command } from '@game/game-core';
 import {
   activityDialogues,
+  activityDialogueVariants,
   activityScenes,
   backgrounds,
   eventDialogues,
@@ -393,7 +394,9 @@ function App() {
                         onFocus={() => !disabled && setPreviewActivity(a.id)}
                         onClick={() => {
                           act({ type: 'SELECT_ACTIVITY', activityId: a.id });
-                          const beats = activityDialogues[a.id];
+                          const variants = activityDialogueVariants[a.id];
+                          const previousCount = state.history.filter((entry) => entry.includes(`:activity:${a.id}`)).length;
+                          const beats = variants?.[(previousCount + Math.floor((state.month - 1) / 12)) % variants.length] ?? activityDialogues[a.id];
                           if (beats?.length) setConversation({ activityId: a.id, beats, index: 0 });
                         }}
                       >

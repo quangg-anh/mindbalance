@@ -129,6 +129,69 @@ export const activityDialogues: Record<string, DialogueBeat[]> = {
   lottery: [{ speaker: 'ong-tu', line: 'Một tờ lấy may thôi cháu. Đừng đặt cả hy vọng vào nó.' }, { speaker: 'minh', line: 'Vâng, cháu chỉ thử một lần. Việc của cháu vẫn phải tự làm.' }],
 };
 
+export const activityDialogueVariants: Record<string, DialogueBeat[][]> = {
+  study: [
+    activityDialogues.study!,
+    [{ speaker: 'lan', line: 'Bài hôm nay dài đấy. Cậu muốn chia đôi phần ôn không?' }, { speaker: 'minh', line: 'Được. Tớ làm phần khó trước, lát mình đối chiếu đáp án.' }],
+    [{ speaker: 'minh', line: 'Lần này mình không học để đối phó. Mình muốn biết vì sao đáp án lại như vậy.' }, { speaker: 'lan', line: 'Tốt. Hiểu được gốc thì đề có đổi cách hỏi cũng không làm khó cậu.' }],
+    [{ speaker: 'lan', line: 'Cậu tiến bộ nhiều rồi. Giờ thử giải thích lại phần này cho tớ xem.' }, { speaker: 'minh', line: 'Để tớ thử. Nếu nói vấp thì cậu đừng cười nhé.' }],
+  ],
+  part_time: [
+    activityDialogues.part_time!,
+    [{ speaker: 'phong', line: 'Hôm nay em đứng quầy chính. Có gì không chắc thì hỏi ngay.' }, { speaker: 'minh', line: 'Vâng. Em thà hỏi một lần còn hơn sửa sai cả tối.' }],
+    [{ speaker: 'minh', line: 'Em bắt đầu quen việc rồi, nhưng lịch học đang dày lên.' }, { speaker: 'phong', line: 'Biết từ chối ca cũng là một kỹ năng. Đừng học bài đó quá muộn.' }],
+    [{ speaker: 'phong', line: 'Khách vừa khen em xử lý bình tĩnh đấy.' }, { speaker: 'minh', line: 'Chắc vì em đã gặp đủ tình huống để không còn hoảng nữa.' }],
+  ],
+  skill_training: [
+    activityDialogues.skill_training!,
+    [{ speaker: 'minh', line: 'Sai ở bước nào thì sửa đúng bước đó. Không cần xóa sạch làm lại.' }],
+    [{ speaker: 'minh', line: 'Bài tập cũ từng mất cả buổi, giờ mình giải được nhanh hơn rồi.' }],
+    [{ speaker: 'minh', line: 'Kỹ năng không tăng sau một đêm. Nhưng hôm nay phải tốt hơn hôm qua một chút.' }],
+  ],
+  exercise: [
+    activityDialogues.exercise!,
+    [{ speaker: 'huy', line: 'Hôm nay chạy nhẹ thôi. Ông đừng biến buổi tập thành kỳ thi.' }, { speaker: 'minh', line: 'Yên tâm. Mục tiêu là khỏe hơn, không phải thắng ai.' }],
+    [{ speaker: 'minh', line: 'Tập đều đúng là khác. Leo cầu thang không còn hụt hơi nữa.' }, { speaker: 'huy', line: 'Tốt. Giờ ông đủ sức xách luôn túi đồ ăn của tôi.' }],
+    [{ speaker: 'huy', line: 'Khởi động kỹ chưa? Tôi không muốn lại phải dìu ông về.' }, { speaker: 'minh', line: 'Rồi. Lần này tớ nghe cơ thể trước khi nghe sĩ diện.' }],
+  ],
+  rest: [
+    activityDialogues.rest!,
+    [{ speaker: 'minh', line: 'Tối nay mình tắt báo thức sớm. Một ngày nghỉ không làm mọi thứ sụp đổ.' }, { speaker: 'huy', line: 'Cuối cùng ông cũng nói được một câu nghe có lý.' }],
+    [{ speaker: 'huy', line: 'Tôi để phần cơm trên bàn. Ăn xong rồi ngủ tiếp.' }, { speaker: 'minh', line: 'Cảm ơn. Hôm nay tớ không cố chứng minh mình ổn nữa.' }],
+    [{ speaker: 'minh', line: 'Đầu óc yên xuống rồi. Có lẽ nghỉ ngơi cũng là một phần của kế hoạch.' }],
+  ],
+  gaming: [
+    activityDialogues.gaming!,
+    [{ speaker: 'huy', line: 'Một trận giải lao nhé. Trận trước ông gánh đội khá lắm.' }, { speaker: 'minh', line: 'Được, nhưng hết trận là dừng. Tớ còn việc chưa xong.' }],
+    [{ speaker: 'minh', line: 'Hôm nay chơi vì vui thôi, không thức tới sáng.' }, { speaker: 'huy', line: 'Tuyên bố rất trưởng thành. Để xem ông giữ được bao lâu.' }],
+    [{ speaker: 'huy', line: 'Đội cũ lại online đủ người rồi.' }, { speaker: 'minh', line: 'Vào thôi. Lâu rồi mới có một tối không phải chạy theo hạn chót.' }],
+  ],
+  socialize: [
+    activityDialogues.socialize!,
+    [{ speaker: 'huy', line: 'Căn tin có món mới. Lan bảo không ngon, tức là vẫn ăn hết.' }, { speaker: 'lan', line: 'Cậu bớt kể sai đi. Minh, đi cùng bọn tớ nhé?' }, { speaker: 'minh', line: 'Đi. Hôm nay tớ cần nghe chuyện khác ngoài bài vở.' }],
+    [{ speaker: 'lan', line: 'Mọi người đang bàn chuyến đi cuối tuần.' }, { speaker: 'minh', line: 'Cho tớ tham gia với. Tớ sẽ kiểm tra lịch trước khi hứa.' }],
+    [{ speaker: 'huy', line: 'Nhóm mình hiếm khi đông đủ thế này.' }, { speaker: 'minh', line: 'Vậy cất điện thoại đi. Ít nhất tối nay mình nói chuyện thật.' }],
+  ],
+  family: [
+    activityDialogues.family!,
+    [{ speaker: 'mai', line: 'Anh ăn uống đàng hoàng chưa? Đừng trả lời “rồi” nhanh quá.' }, { speaker: 'minh', line: 'Hôm nay anh ăn thật. Anh còn biết nấu thêm được một món rồi.' }],
+    [{ speaker: 'minh', line: 'Ở nhà dạo này thế nào? Đừng chỉ kể chuyện tốt để anh yên tâm.' }, { speaker: 'mai', line: 'Vậy anh cũng phải hứa không giấu chuyện khó ở trên đó.' }],
+    [{ speaker: 'mai', line: 'Mẹ đang ngồi cạnh em nhưng giả vờ không nghe máy.' }, { speaker: 'minh', line: 'Đưa máy cho mẹ đi. Hôm nay anh có nhiều chuyện muốn kể.' }],
+  ],
+  borrow: [
+    activityDialogues.borrow!,
+    [{ speaker: 'minh', line: 'Em đã tính khoản cần vay và phần có thể trả mỗi mùa.' }, { speaker: 'phong', line: 'Có con số rõ ràng tốt hơn lời hứa. Nhưng em vẫn phải chừa đường lui.' }],
+    [{ speaker: 'phong', line: 'Nợ cũ chưa nhẹ mà em lại cần thêm sao?' }, { speaker: 'minh', line: 'Em biết đây không phải giải pháp lâu dài. Em đang mua thời gian để sửa tình hình.' }],
+    [{ speaker: 'minh', line: 'Em không thích cảm giác phải hỏi vay lần nữa.' }, { speaker: 'phong', line: 'Vậy nhớ cảm giác này khi em quyết định khoản tiền tiếp theo dùng vào đâu.' }],
+  ],
+  lottery: [
+    activityDialogues.lottery!,
+    [{ speaker: 'ong-tu', line: 'Lại gặp cháu. Hôm nay mua vui hay mua hy vọng?' }, { speaker: 'minh', line: 'Một chút vui thôi ông. Cháu vẫn giữ tiền cho việc cần làm.' }],
+    [{ speaker: 'minh', line: 'Có lúc cháu cứ nghĩ chỉ cần trúng một lần là mọi chuyện xong.' }, { speaker: 'ong-tu', line: 'Tiền giải quyết được nhiều chuyện. Nhưng lòng tham thường tạo chuyện mới.' }],
+    [{ speaker: 'ong-tu', line: 'Tờ cuối hôm nay đấy. Cháu có chắc không?' }, { speaker: 'minh', line: 'Cháu mua một tờ thôi. Phần còn lại vẫn phải dựa vào kế hoạch.' }],
+  ],
+};
+
 /** Hội thoại nhiều nhịp theo sự kiện. Speaker ∈ cast của eventScenes, hoặc `narrator`. */
 export const eventDialogues: Record<string, EventDialogueBeat[]> = {
   'first-test': [
