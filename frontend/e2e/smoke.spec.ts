@@ -116,10 +116,11 @@ test('full 16-season journey reaches ending, timeline and title', async ({ page 
 test('built PWA registers service worker, reports offline state and preserves reload state', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop-chromium', 'Service worker check runs once');
   await page.goto('/');
-  await page.waitForFunction(async () => Boolean(await navigator.serviceWorker?.ready));
-  if (!await page.evaluate(() => Boolean(navigator.serviceWorker.controller))) {
-    await page.reload();
-  }
+  const workerResponse = await page.request.get('/sw.js');
+  expect(workerResponse.ok()).toBe(true);
+  await page.evaluate(async () => navigator.serviceWorker.register('/sw.js'));
+  await page.waitForFunction(async () => (await navigator.serviceWorker.getRegistrations()).length > 0);
+  await page.reload();
   await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
   await page.context().setOffline(true);
   await page.evaluate(() => window.dispatchEvent(new Event('offline')));

@@ -6,7 +6,7 @@ export interface SurpriseChoice {
   label: string;
   effectSummary: string;
   effects: Effects;
-  delayed: Array<{ afterMonths: number; effects: Effects }>;
+  delayed: Array<{ afterMonths: number; effects: Effects; source?: string; prose?: string }>;
 }
 
 export interface SurpriseSituation {
@@ -135,7 +135,7 @@ export const surprises: SurpriseSituation[] = [
         id: 'pay-fee',
         label: 'Đóng phí hồ sơ để “nhận việc”',
         effectSummary: 'Mất tiền ngay; thông tin cá nhân có thể lộ',
-        effects: { stats: { money: -15, spirit: -4 }, flags: { personalDataExposed: true } },
+        effects: { stats: { money: -15, spirit: -4 }, flags: { personalDataExposed: true, accountCompromisedRisk: true } },
         delayed: [{ afterMonths: 2, effects: { flags: { accountCompromisedRisk: true }, stats: { spirit: -3 } } }],
       },
       {
@@ -181,7 +181,7 @@ export const surprises: SurpriseSituation[] = [
         id: 'call-mother',
         label: 'Gọi về kể với mẹ',
         effectSummary: 'An ủi và có thể được hỗ trợ; cảm giác mắc nợ',
-        effects: { stats: { spirit: 4, money: 6 }, relationships: { family: 5, mai: 3 }, traits: { familyOriented: 1 } },
+        effects: { stats: { spirit: 4, money: 6 }, relationships: { family: 5 }, traits: { familyOriented: 1 } },
         delayed: none,
       },
     ],
@@ -317,7 +317,7 @@ export const surprises: SurpriseSituation[] = [
         label: 'Trả lại đầy đủ cho chủ',
         effectSummary: 'Tăng đạo đức; có thể được cảm ơn',
         effects: { stats: { morality: 6, spirit: 3 }, flags: { helpedStranger: true } },
-        delayed: [{ afterMonths: 2, effects: { stats: { money: 4 }, relationships: { lan: 2 } } }],
+        delayed: [{ afterMonths: 2, effects: { stats: { money: 4 } }, source: 'found-wallet:return-full', prose: 'Chủ chiếc ví tìm được Minh qua thông tin bảo vệ ghi lại và gửi lời cảm ơn.' }],
       },
       {
         id: 'take-cash-return',
@@ -344,11 +344,11 @@ export const surprises: SurpriseSituation[] = [
   },
   {
     id: 'wage-theft',
-    title: 'Bị trì hoãn / quỵt lương',
+    title: 'Lương bị giữ lại',
     years: [2, 3, 4],
     afterActivities: ['part_time'],
     weight: 13,
-    prerequisite: [],
+    prerequisite: [{ field: 'flags.accountCompromisedRisk', op: 'eq', value: true }],
     category: 'work',
     choices: [
       {
@@ -397,7 +397,7 @@ export const surprises: SurpriseSituation[] = [
         id: 'pay-debt',
         label: 'Dùng tiền trả nợ / tiền trọ',
         effectSummary: 'Thở được thêm một tháng',
-        effects: { stats: { money: 15, debt: -10, spirit: 4 } },
+        effects: { stats: { money: 15, debt: -10, spirit: 4 }, flags: { lotteryProfit: true } },
         delayed: none,
       },
       {
@@ -411,16 +411,30 @@ export const surprises: SurpriseSituation[] = [
         id: 'send-home',
         label: 'Gửi một phần về nhà',
         effectSummary: 'Gia đình nhẹ gánh; túi mình còn mỏng',
-        effects: { stats: { money: 6, spirit: 3 }, relationships: { family: 6, mai: 4 } },
+        effects: { stats: { money: 6, spirit: 3 }, relationships: { family: 6 }, flags: { lotteryProfit: true } },
         delayed: none,
       },
       {
         id: 'treat-friends',
         label: 'Mời bạn bè ăn một bữa',
         effectSummary: 'Ấm quan hệ; tiêu nhanh',
-        effects: { stats: { money: 2, spirit: 5 }, relationships: { huy: 4, lan: 2 } },
+        effects: { stats: { money: 2, spirit: 5 }, relationships: { huy: 4, lan: 2 }, flags: { lotteryProfit: true } },
         delayed: none,
       },
+    ],
+  },
+  {
+    id: 'lottery-jackpot',
+    title: 'Tấm vé trúng giải lớn',
+    years: [2, 3, 4],
+    afterActivities: ['lottery'],
+    weight: 1,
+    prerequisite: [{ field: 'flags.boughtLottery', op: 'eq', value: true }],
+    category: 'luck',
+    choices: [
+      { id: 'make-plan', label: 'Khóa tiền vào quỹ và lập kế hoạch', effectSummary: 'Ổn định khoản trúng; tiền không tự quyết định tương lai', effects: { stats: { money: 70, spirit: 5 }, flags: { jackpotStable: true, lotteryProfit: true } }, delayed: none },
+      { id: 'share-family', label: 'Trả nợ và chia sẻ với gia đình', effectSummary: 'Giảm nghĩa vụ, giữ phần dự phòng', effects: { stats: { money: 45, debt: -80, spirit: 7 }, relationships: { family: 12 }, flags: { jackpotStable: true, lotteryProfit: true } }, delayed: none },
+      { id: 'spend-fast', label: 'Tiêu ngay khi còn hưng phấn', effectSummary: 'Niềm vui lớn nhưng khoản tiền hao nhanh', effects: { stats: { money: 25, spirit: 10 }, traits: { gambler: 12 }, flags: { lotteryProfit: true } }, delayed: [{ afterMonths: 3, effects: { stats: { money: -20, spirit: -6 } }, source: 'lottery-jackpot:spend-fast', prose: 'Những khoản chi sau ngày trúng giải bắt đầu tới hạn.' }] },
     ],
   },
   {

@@ -99,6 +99,7 @@ export const surpriseSceneById: Record<string, BackgroundId> = {
   'found-wallet': 'surpriseMorality',
   'wage-theft': 'surpriseWork',
   'small-lottery-win': 'surpriseLuck',
+  'lottery-jackpot': 'surpriseLuck',
 };
 
 /**
@@ -130,7 +131,7 @@ export const activityDialogues: Record<string, DialogueBeat[]> = {
   gaming: [{ speaker: 'huy', line: 'Minh, vào đội đi. Thiếu đúng một người.' }, { speaker: 'minh', line: 'Một trận thôi nhé. Xong cậu nhắc tớ quay lại học.' }],
   socialize: [{ speaker: 'lan', line: 'Bọn tớ định ra căn tin. Minh đi cùng không?' }, { speaker: 'minh', line: 'Có chứ. Dạo này tớ cũng ít nói chuyện với mọi người.' }, { speaker: 'huy', line: 'Vậy đủ đội rồi. Hôm nay không ai được ngồi một mình.' }],
   family: [{ speaker: 'mai', line: 'Anh Minh khỏe không? Mẹ cứ hỏi bao giờ anh gọi về.' }, { speaker: 'minh', line: 'Anh vẫn ổn. Nói với mẹ tối nay anh sẽ gọi lâu hơn nhé.' }],
-  borrow: [{ speaker: 'phong', line: 'Anh có thể giúp, nhưng em phải tính rõ ngày trả.' }, { speaker: 'minh', line: 'Em hiểu. Em sẽ ghi lại và không xem đây là tiền miễn phí.' }],
+  borrow: [{ speaker: 'phong', line: 'Anh không cho em vay. Anh giúp em so các kênh chính thức và tính sức trả.' }, { speaker: 'minh', line: 'Em hiểu. Em sẽ ghi rõ nghĩa vụ trước khi ký.' }],
   lottery: [{ speaker: 'ong-tu', line: 'Một tờ lấy may thôi cháu. Đừng đặt cả hy vọng vào nó.' }, { speaker: 'minh', line: 'Vâng, cháu chỉ thử một lần. Việc của cháu vẫn phải tự làm.' }],
 };
 
@@ -179,9 +180,9 @@ export const activityDialogueVariants: Record<string, DialogueBeat[][]> = {
   ],
   family: [
     activityDialogues.family!,
-    [{ speaker: 'mai', line: 'Anh ăn uống đàng hoàng chưa? Đừng trả lời “rồi” nhanh quá.' }, { speaker: 'minh', line: 'Hôm nay anh ăn thật. Anh còn biết nấu thêm được một món rồi.' }],
-    [{ speaker: 'minh', line: 'Ở nhà dạo này thế nào? Đừng chỉ kể chuyện tốt để anh yên tâm.' }, { speaker: 'mai', line: 'Vậy anh cũng phải hứa không giấu chuyện khó ở trên đó.' }],
-    [{ speaker: 'mai', line: 'Mẹ đang ngồi cạnh em nhưng giả vờ không nghe máy.' }, { speaker: 'minh', line: 'Đưa máy cho mẹ đi. Hôm nay anh có nhiều chuyện muốn kể.' }],
+    [{ speaker: 'mother', line: 'Con ăn uống đàng hoàng chưa? Đừng trả lời “rồi” nhanh quá.' }, { speaker: 'minh', line: 'Hôm nay con ăn thật. Con còn biết nấu thêm một món rồi.' }],
+    [{ speaker: 'father', line: 'Ở nhà vẫn xoay được. Con nói thật xem trên đó có khó quá không.' }, { speaker: 'minh', line: 'Con sẽ không giấu. Mình cùng tính, chứ con không hứa suông.' }],
+    [{ speaker: 'mai', line: 'Mẹ đang ngồi cạnh em, cha đi lấy sổ chi tiêu. Cả nhà chờ anh kể.' }, { speaker: 'minh', line: 'Vậy mở loa nhé. Hôm nay anh muốn nghe từng người.' }],
   ],
   borrow: [
     activityDialogues.borrow!,
@@ -205,8 +206,8 @@ export const eventDialogues: Record<string, EventDialogueBeat[]> = {
     { speaker: 'minh', line: 'Ừ… Mình sẽ làm hết sức. Không để bốn năm bắt đầu bằng một tờ giấy trắng.' },
   ],
   'traffic-accident': [
-    { speaker: 'narrator', line: 'Tiếng phanh xe cắt ngang chiều về ký túc.' },
-    { speaker: 'minh', line: 'Đầu óc quay. Tay run. Thành phố không chờ ai đứng dậy.' },
+    { speaker: 'narrator', line: 'Một xe máy va quệt Minh rồi thắng gấp giữa chiều về ký túc.' },
+    { speaker: 'minh', line: 'Đầu óc quay. Tay run. Mình cần kiểm tra xem có bị thương không.' },
     { speaker: 'narrator', line: 'Mỗi bước về phòng sau đó đều nhắc Minh: sức khỏe không phải chỉ số phụ.' },
   ],
   'first-tet-away': [
@@ -216,8 +217,8 @@ export const eventDialogues: Record<string, EventDialogueBeat[]> = {
     { speaker: 'mai', line: 'Chỉ cần anh còn nhớ gọi về là được. Mai chờ.' },
   ],
   'help-accident': [
-    { speaker: 'narrator', line: 'Ai đó nằm giữa đường. Minh đứng đó, hai bàn tay run.' },
-    { speaker: 'minh', line: 'Nếu dừng lại, mình có thể trễ giờ. Nếu bỏ đi… mình mang theo tiếng phanh cả buổi sáng.' },
+    { speaker: 'narrator', line: 'Một người vừa bị va quệt. Tiếng phanh kéo Minh về buổi chiều mình từng cần trợ giúp.' },
+    { speaker: 'minh', line: 'Mình biết cảm giác nằm đó và chờ ai đó làm điều an toàn.' },
     { speaker: 'narrator', line: 'Không có lựa chọn sạch. Chỉ có lựa chọn Minh dám nhận là của mình.' },
   ],
   'friend-in-need': [
@@ -243,13 +244,13 @@ export const eventDialogues: Record<string, EventDialogueBeat[]> = {
     { speaker: 'mai', line: 'Em không đòi anh cứu cả nhà. Em chỉ muốn anh biết là nhà vẫn nghĩ tới anh.' },
   ],
   'internship': [
-    { speaker: 'narrator', line: 'Cơ hội thực tập mở ra — và cũng khép lại thời gian nghỉ.' },
+    { speaker: 'narrator', line: 'Lan chuyển Minh hồ sơ thực tập; Phong ngồi cùng để rà lịch và yêu cầu công việc.' },
     { speaker: 'phong', line: 'Chỗ này không dễ. Em vào được là tốt, nhưng đừng để sức mình cạn trước khi học xong.' },
     { speaker: 'minh', line: 'Em hiểu. Em muốn thử… vì sợ bỏ lỡ, cũng sợ mình chưa sẵn sàng.' },
   ],
   'phong-crisis': [
     { speaker: 'narrator', line: 'Phong không còn cười như ngày giới thiệu việc làm thêm.' },
-    { speaker: 'phong', line: 'Anh chỉ… đứng dậy không nổi một lúc. Đừng nhìn anh như người thất bại.' },
+    { speaker: 'phong', line: 'Anh kiệt sức. Nợ gia đình vẫn còn, nên lời khuyên nghề nghiệp của anh đôi lúc bị nỗi sợ thiếu tiền kéo lệch.' },
     { speaker: 'minh', line: 'Anh không thất bại. Anh đang trả giá. Em… em có thể giúp gì được không?' },
     { speaker: 'phong', line: 'Giúp anh nhớ rằng tiền không đáng đổi lấy cả người. Em cũng nhớ giúp anh.' },
   ],
@@ -265,13 +266,12 @@ export const eventDialogues: Record<string, EventDialogueBeat[]> = {
     { speaker: 'mai', line: 'Vậy thì nói thật với họ. Im lặng lâu quá cũng thành một kiểu trả lời.' },
   ],
   'rooftop-night': [
-    { speaker: 'narrator', line: 'Sân thượng im. Gió lạnh hơn những gì Minh chuẩn bị.' },
-    { speaker: 'minh', line: 'Nếu không ai tới… mình có còn muốn tiếp tục không?' },
-    { speaker: 'narrator', line: 'Đây không phải màn bỏ lượt. Đây là câu hỏi về cả hành trình.' },
-    { speaker: 'minh', line: 'Mình sẽ chọn. Dù chọn đứng dậy, hay chọn dừng lại.' },
+    { speaker: 'narrator', line: 'Minh nhận ra mình đang quá tải và rời sân thượng để tới nơi có người.' },
+    { speaker: 'minh', line: 'Mình không cần tự giải quyết đêm nay. Mình cần gọi một người tin cậy.' },
+    { speaker: 'narrator', line: 'Nhờ hỗ trợ không xóa khó khăn, nhưng tạo khoảng an toàn để Minh đi tiếp.' },
   ],
   'final-year-direction': [
-    { speaker: 'narrator', line: 'Năm cuối hỏi thẳng: Minh muốn đi đâu?' },
+    { speaker: 'narrator', line: 'Tháng 39, portfolio và khóa luận cùng mở. Minh cần đặt kế hoạch, chưa phải xác nhận kết thúc.' },
     { speaker: 'lan', line: 'Cậu không cần trả lời đúng. Cậu cần trả lời thật — rồi chịu trách nhiệm với nó.' },
     { speaker: 'minh', line: 'Thật thì… mình sợ chọn một thứ là đánh mất những thứ còn lại.' },
     { speaker: 'lan', line: 'Mọi người đều sợ. Khác nhau ở chỗ có dám viết tiếp sau khi sợ.' },
@@ -287,7 +287,7 @@ export const eventDialogues: Record<string, EventDialogueBeat[]> = {
     { speaker: 'minh', line: 'Em sẽ đọc kỹ. Em không muốn bước vào một cánh cửa chỉ vì sợ đứng ngoài.' },
   ],
   'final-debt': [
-    { speaker: 'narrator', line: 'Con số nợ không ngủ. Minh cũng khó ngủ.' },
+    { speaker: 'narrator', line: 'Minh mở sổ quyết toán. Dù nợ bằng không hay còn nghĩa vụ, các con số cần được nhìn thẳng.' },
     { speaker: 'minh', line: 'Trả bằng tiền. Trả bằng sức. Hay trả bằng cả mối quan hệ… đều có giá.' },
     { speaker: 'narrator', line: 'Khoản nợ cuối không chỉ hỏi ví. Nó hỏi Minh còn giữ được gì sau khi trả.' },
   ],
@@ -298,10 +298,8 @@ export const eventDialogues: Record<string, EventDialogueBeat[]> = {
     { speaker: 'mai', line: 'Dù sao thì cửa nhà vẫn mở. Em chỉ mong anh còn biết đường về.' },
   ],
   graduation: [
-    { speaker: 'narrator', line: 'Áo cử nhân mỏng, nhưng đủ để che bốn năm dài.' },
-    { speaker: 'lan', line: 'Cậu tới được đây. Không hoàn hảo — nhưng là thật.' },
-    { speaker: 'huy', line: 'Ối! Nhìn kìa! Cậu đừng khóc trên sân khấu nghe chưa!' },
-    { speaker: 'minh', line: 'Mình… mình chỉ muốn nói cảm ơn. Với những ai còn đứng đây.' },
+    { speaker: 'narrator', line: 'Ngày rời trường đến. Kết quả kỳ thi và những người còn giữ liên lạc quyết định lời chia tay.' },
+    { speaker: 'minh', line: 'Bốn năm khép lại ở cổng trường; tấm bằng, công việc và hướng đi sẽ được xác nhận từ những gì mình đã làm.' },
   ],
 };
 
@@ -368,6 +366,11 @@ export const surpriseDialogues: Record<string, SurpriseDialogueBeat[]> = {
     { speaker: 'huy', line: 'Không có sóng mạnh. Ai đó bấm chuông cứu hộ, còn lại đừng chen vào cửa.' },
     { speaker: 'minh', line: 'Không gian càng chật, ai cũng càng dễ hoảng. Mình cần giữ cả nhóm bình tĩnh.' },
   ],
+  'lottery-jackpot': [
+    { speaker: 'narrator', line: 'Dãy số trùng khớp. Minh kiểm tra lại nhiều lần trước khi tin khoản tiền là thật.' },
+    { speaker: 'ong-tu', line: 'Trúng là may. Giữ được mình sau khi trúng mới cần bản lĩnh.' },
+    { speaker: 'minh', line: 'Mình phải quyết định cách quản lý tiền trước khi cảm xúc quyết định hộ.' },
+  ],
 };
 
 export const activityScenes: Record<string, { bg: BackgroundId; cast: PortraitId[]; vibe: string }> = {
@@ -402,5 +405,5 @@ export const eventScenes: Record<string, { bg: BackgroundId; cast: PortraitId[];
   'job-offer': { bg: 'campus', cast: ['minh', 'phong'], line: 'Một lời mời việc — cửa mở, cũng là cửa chọn.' },
   'final-debt': { bg: 'dorm', cast: ['minh'], line: 'Con số nợ không ngủ. Minh cũng khó ngủ.' },
   'last-tet': { bg: 'dorm', cast: ['minh', 'mai'], line: 'Tết cuối đời sinh viên. Bàn ăn quê chờ một chỗ trống.' },
-  graduation: { bg: 'campus', cast: ['minh', 'lan', 'huy'], line: 'Áo cử nhân mỏng, nhưng đủ để che bốn năm dài.' },
+  graduation: { bg: 'campus', cast: ['minh'], line: 'Ngày rời trường đến, không mặc định ai có bằng hay ai tới tiễn.' },
 };

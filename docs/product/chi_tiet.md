@@ -1,4 +1,23 @@
-# CỐT TRUYỆN GAME
+# ĐẶC TẢ GAMEPLAY ↔ STORY
+
+Story bible canonical nằm tại `game-story.md`. File này chỉ ánh xạ mechanics sang truyện; phần tư liệu cũ bên dưới dùng tham khảo, không được ghi đè runtime canonical.
+
+## Mapping bắt buộc
+
+- `study` → kiểm tra, bài nhóm, kỳ thi; lặp nhiều tạo kỷ luật nhưng hao sức.
+- `part_time` → Phong giới thiệu việc, lừa đảo việc làm, khất lương, thực tập và lời mời nghề.
+- `skill_training` → portfolio/freelance; ending freelancer cần cả kế hoạch, kỹ năng và lịch sử thực hành.
+- `gaming` → quan hệ Huy và trì hoãn; lời thoại đổi theo trait `avoidant`.
+- `family` → cha, mẹ, Mai luân phiên; ending trở về cần kế hoạch và quan hệ gia đình đủ bền.
+- `borrow` → nguồn vay bên ngoài; Phong chỉ cố vấn cách trả và cảnh báo rủi ro.
+- `lottery` → mua vé chỉ mở eligibility; trúng thưởng nằm ở surprise, không do người chơi tự chọn kết quả.
+- Delayed effects mang `source`/`prose`, được ghi vào history và timeline khi tới hạn.
+- Event tháng 39/42/44/46/47/48 lần lượt xây hướng năm cuối, thi, việc, quyết toán, Tết và ngày rời trường.
+- `graduation` là “Ngày rời trường”; engine chỉ xác nhận có bằng nếu lịch sử thi và kiến thức đạt điều kiện.
+
+---
+
+# TƯ LIỆU THIẾT KẾ CŨ
 
 ## Tên đề xuất: **Bốn Năm Thanh Xuân**
 
@@ -285,7 +304,7 @@ Nếu có người đến, Minh có cơ hội phục hồi tinh thần và nhìn
 
 Nếu không ai đến, cậu phải tự lựa chọn tiếp tục hay buông xuôi.
 
-Nút “Skip” trên giao diện lúc này mang ý nghĩa cốt truyện rõ ràng hơn. Nó không chỉ là bỏ qua lượt chơi, mà là lựa chọn từ bỏ toàn bộ hành trình.
+Skip chỉ bỏ qua trình bày đã đọc hoặc nội dung nhạy cảm; không đồng nghĩa Minh bỏ học. Dừng hành trình là lệnh riêng, có xác nhận rõ ràng.
 
 Cuối năm ba, Minh phải quyết định con đường cho năm cuối:
 

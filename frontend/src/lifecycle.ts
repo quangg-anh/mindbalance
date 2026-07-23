@@ -33,10 +33,17 @@ export function firstUnreadBeat(kind: BeatKind, id: string, beatCount: number, s
   return beatCount - 1;
 }
 
-export interface TimelineEntry { month: number; season: number; kind: 'event' | 'activity' | 'surprise' | 'choice'; label: string }
+export interface TimelineEntry { month: number; season: number; kind: 'event' | 'activity' | 'surprise' | 'choice' | 'delayed'; label: string }
 
 export function parseTimeline(history: GameState['history']): TimelineEntry[] {
   return history.flatMap((raw) => {
+    const delayed = /^m(\d+):delayed:([^:]+):(.+)$/.exec(raw);
+    if (delayed) {
+      const month = Number(delayed[1]);
+      const source = decodeURIComponent(delayed[2]!);
+      const prose = decodeURIComponent(delayed[3]!);
+      return [{ month, season: Math.floor((month - 1) / 3) + 1, kind: 'delayed' as const, label: `${prose} (Nguyên nhân: ${source})` }];
+    }
     const match = /^m(\d+):(activity|event|surprise):([^:]+)(?::([^:]+))?$/.exec(raw);
     if (!match) return [];
     const month = Number(match[1]);

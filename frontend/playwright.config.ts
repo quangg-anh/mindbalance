@@ -30,7 +30,8 @@ export default defineConfig({
   webServer: {
     command: 'npm run build && npm run preview',
     url: 'http://localhost:4173',
-    reuseExistingServer: !process.env.CI,
+    // Service-worker/PWA tests require the production preview, never a stale dev server.
+    reuseExistingServer: false,
     timeout: 60_000,
   },
 });

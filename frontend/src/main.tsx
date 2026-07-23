@@ -303,7 +303,7 @@ function App() {
     title = 'Hành trình khép lại';
   } else if (surprise) {
     bg = surpriseSceneById[surprise.id] ?? surpriseBackgrounds[surprise.category] ?? 'campus';
-    cast = surprise.category === 'relationship' ? ['minh', 'lan', 'huy'] : surprise.category === 'work' ? ['minh', 'phong'] : ['minh'];
+    cast = surpriseBeat?.speaker && surpriseBeat.speaker !== 'narrator' ? ['minh', surpriseBeat.speaker as PortraitId] : ['minh'];
     const surpriseSpeaker = surpriseBeat?.speaker;
     speaker = surpriseSpeaker === 'narrator' || !surpriseSpeaker ? '…' : content.characters.find((c) => c.id === surpriseSpeaker)?.name ?? 'Minh';
     line = surpriseBeat?.line ?? 'Một chuyện không nằm trong kế hoạch đã xảy ra.';
@@ -509,7 +509,12 @@ function App() {
                           act({ type: 'SELECT_ACTIVITY', activityId: a.id });
                           const variants = activityDialogueVariants[a.id];
                           const previousCount = state.history.filter((entry) => entry.includes(`:activity:${a.id}`)).length;
-                          const beats = variants?.[(previousCount + Math.floor((state.month - 1) / 12)) % variants.length] ?? activityDialogues[a.id];
+                          const relationshipVariant = a.id === 'family'
+                            ? previousCount % (variants?.length ?? 1)
+                            : a.id === 'lottery'
+                              ? Math.min((variants?.length ?? 1) - 1, Math.floor((state.traits.gambler ?? 0) / 10))
+                              : Math.min((variants?.length ?? 1) - 1, Math.floor((state.month - 1) / 12));
+                          const beats = variants?.[relationshipVariant] ?? activityDialogues[a.id];
                           if (beats?.length) setConversation({ activityId: a.id, beats, index: firstUnreadBeat('activity', a.id, beats.length, settings.skipRead) });
                         }}
                       >

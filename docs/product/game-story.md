@@ -1,4 +1,52 @@
-# CỐT TRUYỆN GAME
+# STORY BIBLE CANONICAL — BỐN NĂM THANH XUÂN
+
+## Hạt nhân
+
+Minh rời quê lên thành phố, mang theo tiền tiết kiệm của gia đình và lời dặn: “Bốn năm sau, con vẫn biết mình là ai.” Trưởng thành không phải tối đa mọi chỉ số; đó là hiểu mỗi lựa chọn đổi điều gì lấy điều gì, rồi chịu trách nhiệm với hậu quả.
+
+## Quy tắc continuity
+
+1. Huy là bạn cùng phòng; Lan là bạn học; Phong là đàn anh giới thiệu việc và cố vấn; Mai là cầu nối với gia đình; Ông Tư chỉ nói về may mắn, không trao kết quả.
+2. Hoạt động lặp tạo thói quen: học mở đường thi cử, làm thêm mở đường nghề nghiệp, gia đình giữ đường về quê, vé số chỉ mở khả năng may rủi.
+3. Event sau gọi lại nguyên nhân trước: Minh từng bị tai nạn rồi mới phải quyết định có giúp người khác; Lan giới thiệu thực tập rồi Phong giúp nhìn cái giá nghề nghiệp; khủng hoảng của Phong báo trước lời mời việc áp lực cao.
+4. Ý định không phải thành quả. Chọn freelance hoặc về quê chỉ lập kế hoạch; ending còn cần kỹ năng, lịch sử và quan hệ phù hợp.
+5. Mọi hậu quả trì hoãn phải nhắc lại nguồn trong timeline.
+6. Cast phản ánh quan hệ. Khi không đủ thân, narrator thay nhân vật; ngày rời trường không mặc định Minh có bằng hay có bạn bè bên cạnh.
+7. Nội dung khủng hoảng tinh thần không gắn thao tác bỏ qua với bỏ cuộc; luôn hướng Minh tới người tin cậy hoặc nơi hỗ trợ.
+
+## Arc nhân vật
+
+- **Minh:** sống theo kỳ vọng → thử nhiều cách tồn tại → nhận hậu quả → tự định nghĩa thành công.
+- **Lan:** bạn học nguyên tắc → cộng sự tin cậy hoặc người giữ khoảng cách, tùy trách nhiệm của Minh.
+- **Huy:** niềm vui ký túc → tình bạn có trách nhiệm, không chỉ là người rủ chơi.
+- **Phong:** người dẫn đường → tấm gương kiệt sức → lời cảnh báo cho lựa chọn nghề của Minh.
+- **Mai và gia đình:** lý do Minh bắt đầu → áp lực thật → nơi trở về nếu Minh còn nuôi dưỡng quan hệ.
+- **Ông Tư:** bán một chút hy vọng → phản chiếu Minh xem may mắn là cơ hội hay kế hoạch sống.
+
+## Nhịp 16 mùa canonical
+
+| Mùa | Tháng | Beat truyện |
+|---:|---:|---|
+| 1 | 1–3 | Đến thành phố, gặp Huy/Lan/Phong, bài kiểm tra đầu xác lập cách Minh đối diện thiếu chuẩn bị. |
+| 2 | 4–6 | Hai hành động mỗi mùa bắt đầu tạo thói quen học, làm, chơi và giữ liên lạc với nhà. |
+| 3 | 7–9 | Minh bị va quệt; sức khỏe và việc có người đến giúp trở thành trải nghiệm thật. |
+| 4 | 10–12 | Tết đầu xa nhà: độc lập không đồng nghĩa cắt khỏi gia đình. |
+| 5 | 13–15 | Gặp người bị nạn gọi lại tai nạn năm nhất; Minh chọn mình sẽ trở thành người nào. |
+| 6 | 16–18 | Huy gặp khó; tình bạn bắt đầu đòi hỏi thời gian, tiền và giới hạn. |
+| 7 | 19–21 | Áp lực học tập, thị lực và lần gặp Ông Tư mở motif hy vọng đối lập kế hoạch. |
+| 8 | 22–24 | Tin nhà khó khăn; Minh cân bằng học phí với trách nhiệm gia đình. |
+| 9 | 25–27 | Lan chuyển cơ hội thực tập; Phong giúp Minh nhìn yêu cầu thực tế. |
+| 10 | 28–30 | Phong kiệt sức vì việc và nợ gia đình, thành tương lai Minh có thể lặp lại. |
+| 11 | 31–33 | Tiền, dữ liệu hoặc niềm tin bị thất lạc; hậu quả cũ quay lại có tên và nguyên nhân. |
+| 12 | 34–36 | Cuộc nói chuyện khó với gia đình và đêm nhìn lại; hỗ trợ an toàn quan trọng hơn cố chịu. |
+| 13 | 37–39 | Minh lập kế hoạch năm cuối: portfolio, hướng nghề hoặc đường về quê. |
+| 14 | 40–42 | Kỳ thi tốt nghiệp kiểm tra nền tảng đã xây, không chỉ một lần học dồn. |
+| 15 | 43–45 | Lời mời việc buộc Minh nhớ bài học từ Phong và giới hạn đạo đức của mình. |
+| 16 | 46–48 | Quyết toán cuối, Tết và ngày rời trường; bằng cấp, cast và ending phản ánh hành trình thật. |
+
+---
+
+# TƯ LIỆU CỐT TRUYỆN CHI TIẾT
 
 ## Tên đề xuất: **Bốn Năm Thanh Xuân**
 
@@ -285,7 +333,7 @@ Nếu có người đến, Minh có cơ hội phục hồi tinh thần và nhìn
 
 Nếu không ai đến, cậu phải tự lựa chọn tiếp tục hay buông xuôi.
 
-Nút “Skip” trên giao diện lúc này mang ý nghĩa cốt truyện rõ ràng hơn. Nó không chỉ là bỏ qua lượt chơi, mà là lựa chọn từ bỏ toàn bộ hành trình.
+Người chơi có thể bỏ qua phần trình bày nhạy cảm mà không làm Minh bỏ học. Trong cốt truyện, Minh chỉ tiếp tục sau khi rời nơi nguy hiểm và tìm một người hoặc dịch vụ hỗ trợ phù hợp.
 
 Cuối năm ba, Minh phải quyết định con đường cho năm cuối:
 
