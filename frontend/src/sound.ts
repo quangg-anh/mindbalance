@@ -90,8 +90,18 @@ class GameAudio {
   }
 
   private restartMusic() {
-    this.stopMusic();
-    this.startMusic();
+    if (!this.context || !this.music) return;
+    const now = this.context.currentTime;
+    this.music.gain.cancelScheduledValues(now);
+    this.music.gain.setValueAtTime(Math.max(0.0001, this.music.gain.value), now);
+    this.music.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+    window.setTimeout(() => {
+      if (!this.music || !this.context || !this.enabled) return;
+      this.stopMusic();
+      this.music.gain.setValueAtTime(0.0001, this.context.currentTime);
+      this.music.gain.exponentialRampToValueAtTime(0.16, this.context.currentTime + 0.42);
+      this.startMusic();
+    }, 290);
   }
 
   private stopMusic() {

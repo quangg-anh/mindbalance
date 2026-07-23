@@ -3,6 +3,9 @@ import lan from './char-lan.webp';
 import huy from './char-huy.webp';
 import phong from './char-phong.webp';
 import mai from './char-mai.webp';
+import ongTu from './char-ong-tu.svg';
+import father from './char-father.svg';
+import mother from './char-mother.svg';
 import bgCampus from './bg-campus.webp';
 import bgDorm from './bg-dorm.webp';
 import bgClassroom from './bg-classroom.webp';
@@ -25,9 +28,9 @@ export const portraits = {
   huy,
   phong,
   mai,
-  'ong-tu': phong,
-  father: minh,
-  mother: mai,
+  'ong-tu': ongTu,
+  father,
+  mother,
 } as const;
 
 export type PortraitId = keyof typeof portraits;

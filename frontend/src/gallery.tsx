@@ -1,5 +1,6 @@
 import React from 'react';
 import { content } from '@game/game-content';
+import { useModalFocus } from './focus-trap';
 
 const STORAGE_KEY = 'bon-nam-endings-seen';
 
@@ -59,6 +60,7 @@ function handleClose(onClose: (() => void) | undefined): void {
 
 export function EndingGallery({ onClose }: EndingGalleryProps): React.ReactElement {
   const [seen, setSeen] = React.useState<Set<string>>(() => seenEndings());
+  const dialogRef = useModalFocus<HTMLElement>();
 
   React.useEffect(() => {
     setSeen(seenEndings());
@@ -74,11 +76,6 @@ export function EndingGallery({ onClose }: EndingGalleryProps): React.ReactEleme
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
-
-  const dialogRef = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => {
-    dialogRef.current?.focus();
-  }, []);
 
   const endings = content.endings;
   const seenCount = endings.filter((e) => seen.has(e.id)).length;

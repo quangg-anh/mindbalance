@@ -13,6 +13,8 @@ import {
   flushQueue,
   onConflict,
   resolveConflictNewest,
+  syncPull,
+  importSyncCode,
   type SaveEnvelope,
 } from './save-store';
 
@@ -115,6 +117,19 @@ describe('save-store setSave/loadSave round-trip', () => {
 });
 
 describe('save-store listSlots/deleteSlot', () => {
+  it('supports exactly four independent occupied slots', () => {
+    for (let slot = 0; slot < 4; slot += 1) setSave(slot, { ...makeState(slot), month: slot + 1 }, slot);
+    expect(listSlots()).toHaveLength(4);
+    expect([0, 1, 2, 3].map((slot) => loadSave(slot)?.state.month)).toEqual([1, 2, 3, 4]);
+  });
+
+  it('loads matching legacy slot instead of always slot zero', () => {
+    localStorage.setItem('vn_slot_0', JSON.stringify({ month: 2 }));
+    localStorage.setItem('vn_slot_3', JSON.stringify({ month: 33 }));
+    expect(loadSave(3)?.state.month).toBe(33);
+    expect(loadSave(2)).toBeNull();
+  });
+
   it('listSlots reports occupied slots with summary', () => {
     setSave(1, makeState(), 0);
     setSave(2, makeState(), 3);
@@ -138,7 +153,7 @@ describe('save-store sync queue offline push/flush', () => {
     setSave(0, makeState(), 1);
 
     const offline = await syncPush(0);
-    expect(offline.queued).toBe(true);
+    expect(offline.status).toBe('queued');
     const queueRaw = localStorage.getItem(QUEUE_KEY);
     expect(queueRaw).not.toBeNull();
     expect(JSON.parse(queueRaw!)).toHaveLength(1);
@@ -169,7 +184,8 @@ describe('save-store conflict callback fire', () => {
       json: async () => ({ slot: 0, revision: 99, data: { ...makeState(), month: 48 } }),
     } as unknown as Response);
 
-    await syncPush(0);
+    const result = await syncPush(0);
+    expect(result.status).toBe('conflict');
     expect(conflictSpy).toHaveBeenCalledTimes(1);
     const arg = conflictSpy.mock.calls[0]![0] as { slot: number; cloud: { revision: number } };
     expect(arg.slot).toBe(0);
@@ -189,5 +205,26 @@ describe('save-store resolveConflictNewest', () => {
     const local: SaveEnvelope = { version: 2, revision: 10, savedAt: 'x', state: makeState() };
     const cloud = { slot: 0, revision: 5, data: makeState() };
     expect(resolveConflictNewest(local, cloud)).toBe(false);
+  });
+});
+
+describe('save-store pull and queue coalescing', () => {
+  it('pull returns payload and ETag', async () => {
+    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ ok: true, status: 200, headers: new Headers({ etag: '"4"' }), json: async () => ({ slot: 2, revision: 4, data: makeState(4) }) } as Response);
+    const result = await syncPull(2);
+    expect(result.status).toBe('success');
+    if (result.status === 'success') expect(result.etag).toBe('"4"');
+  });
+
+  it('coalesces queued changes by slot', async () => {
+    Object.defineProperty(globalThis.navigator, 'onLine', { configurable: true, value: false });
+    setSave(1, makeState(1), 1); await syncPush(1);
+    setSave(1, makeState(2), 2); await syncPush(1);
+    expect(JSON.parse(localStorage.getItem(QUEUE_KEY)!)).toHaveLength(1);
+  });
+
+  it('imports recovery code', () => {
+    expect(importSyncCode('shared-recovery-code-1234')).toBe(true);
+    expect(getToken()).toBe('shared-recovery-code-1234');
   });
 });

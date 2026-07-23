@@ -1,49 +1,53 @@
-# Báo cáo triển khai
+# Phase 3 — Backend và đồng bộ
 
-Ngày: 22/07/2026
+## Thiết kế
 
-## Phạm vi hoàn thành
+- Backend dùng `Store` async chung. `FileStore` ghi JSON bằng file tạm rồi atomic rename, tuần tự hóa thao tác trong process và giữ TTL idempotency.
+- `NODE_ENV=production` mặc định chọn `SAVE_STORE=file`; `SAVE_STORE=memory` bị từ chối trong production. `SAVE_STORE_FILE` cấu hình đường dẫn, mặc định `./data/saves.json`.
+- `FileStore` phù hợp một Node process. Production nhiều instance nên dùng PostgreSQL với transaction, unique key `(token_hash, slot)`, optimistic revision và bảng idempotency. JSON file không cung cấp locking liên process, backup/replication hoặc HA.
+- API giới hạn 256 KiB bằng byte thực sau khi đọc request. Conflict `412` trả payload cloud hiện tại và `ETag`. GET/PUT/DELETE hỗ trợ lifecycle slot.
+- Frontend lấy base URL từ `VITE_API_BASE_URL`, fallback `/v1/saves`. Push cùng slot được serialize; queue coalesce theo slot; conflict giữ nguyên queue.
+- Tiếp tục slot gọi pull. Local/cloud khác revision mở modal chọn. Giữ local đặt base revision bằng cloud revision rồi PUT có `If-Match`; dùng cloud ghi payload về local.
+- Auto-push chỉ chạy tại milestone: sang tháng, chọn event/surprise, ending; nút đồng bộ là manual push.
+- Mã khôi phục dùng chung anonymous bearer token giữa thiết bị. UI dùng trường password và cảnh báo nhạy cảm; token không được log hoặc hiện trong hint.
 
-- Kiểm toán `docs/product/game-story.md`, `docs/product/legacy-audit.md` và toàn bộ source legacy.
-- Tách `frontend` và `backend` thành hai project độc lập; domain packages nằm trong từng project.
-- Game core thuần: 48 tháng, 2 action point/tháng, command/reducer, seeded RNG, scheduler, delayed consequence, relationship/trait riêng.
-- Content có Zod schema, nhân vật canonical, 10 activity, event bắt buộc bốn năm và đúng 14 ending.
-- Save schema version 2, RNG state và migration `vn_slot_0..3`.
-- React PWA mobile-first, keyboard, ARIA, reduced motion và offline app shell.
-- Node API portable với validation, CORS allowlist, payload/slot quota, request ID, ETag/revision, idempotency và private cache.
-- Tài liệu Cloudflare security/DDoS, incident response, architecture, migration và decisions.
-- CI lint, typecheck, unit, story validation, integration, build và Playwright smoke.
-- Legacy frontend và asset trùng đã xóa sau khi lint, typecheck, test, build và E2E đạt.
+## Kiểm thử
 
-## File chính thay đổi
+- Backend: restart persistence, GET/PUT, ETag/idempotency, conflict body + ETag, oversize theo byte thực, CORS.
+- Frontend: pull + ETag, conflict result/callback, queue offline/flush, queue coalesce, recovery-code import, save lifecycle.
+- Ngày 23/07/2026: backend và frontend đều pass `lint`, `typecheck`, `test`, `build`.
 
-- Tooling: `package.json`, `package-lock.json`, `tsconfig*.json`, `eslint.config.mjs`, `vitest.config.ts`, `playwright.config.ts`.
-- CI: `.github/workflows/ci.yml`.
-- Core: `frontend/packages/game-core/src/*`.
-- Content: `frontend/packages/game-content/src/*`.
-- Shared: `frontend/packages/shared` và `backend/packages/shared`.
-- Web: `frontend/*`.
-- API: `backend/*`.
-- E2E: `e2e/smoke.spec.ts`.
-- Docs: `README.md`, `docs/*.md`.
+## Blocker production
 
-## Kiểm tra đã chạy
+- Chưa deploy theo yêu cầu.
+- Cần PostgreSQL trước khi chạy nhiều backend instance hoặc cần HA; `FileStore` chỉ an toàn cho một process có persistent disk.
+- Anonymous recovery code là bearer secret, chưa có account auth, rotation/revocation, rate limiting/WAF, encryption-at-rest policy, backup và restore drill.
+# Báo cáo triển khai hiện tại
 
-- Trong `frontend` và `backend`: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` đạt.
+Ngày cập nhật: 23/07/2026. Trạng thái: chuẩn bị deploy, **chưa deploy**.
 
-## Giới hạn còn lại
+## Đã hoàn thành và có bằng chứng trong repo
 
-- Backend local dùng `MemoryStore`; production cần PostgreSQL, Redis hoặc KV adapter để lưu bền.
-- WAF, managed rate limit và Tunnel firewall là cấu hình account/infrastructure; repo cung cấp policy/runbook, chưa thể chứng minh active nếu chưa có account/origin.
-- Cloud sync queue/conflict UX và ending gallery hiện ở mức nền tối thiểu; cần product QA dài hạn trước phát hành công khai.
-- Frontend mới chưa có bộ artwork production AVIF/WebP; asset legacy không dùng đã xóa khỏi repo.
-- Playwright hiện smoke test, chưa bao phủ mọi path UI 48 tháng.
-- Không tuyên bố chống DDoS tuyệt đối.
+- Phase 1: 19 event canonical có từ 2 lựa chọn; validator kiểm điều kiện này. Content có đúng 14 ending và fixture reachability trong test core.
+- Phase 2: title screen, bốn slot, xóa/tiếp tục slot, settings/gallery, skip-read, ending timeline và về title. Playwright có smoke vòng đời và bốn slot.
+- Phase 3 local/single-instance: `FileStore` atomic, persistence test qua instance mới; production từ chối `MemoryStore`; sync pull/push, ETag/revision, conflict UI, queue offline và recovery code.
+- Phase 4 phần code/asset: portrait riêng cho Ông Tư/cha/mẹ, nhạc theo mood, icon PNG 192/512 và maskable, focus trap/reduced motion tests.
+- Phase 5 chuẩn bị: backend image Node 22 non-root, persistent path `/data/saves.json`, health/readiness, env examples; frontend API build variable, static headers và SPA fallback; deploy/rollback/smoke runbook.
+- CI định nghĩa lint, typecheck, unit test, build cả hai project và Playwright frontend.
 
-## Rollback
+## Validation gần nhất
 
-1. Khôi phục frontend legacy từ Git commit trước phase dọn nếu frontend mới lỗi.
-2. Rollback backend về image hoặc deployment trước.
-3. Save migration không xóa `vn_slot_0..3` trước khi save schema mới ghi thành công.
-4. Không chạy migration phá hủy dữ liệu. Duy trì đọc schema cũ ít nhất một release.
-5. Production chỉ promote sau staging smoke; nếu smoke lỗi, giữ deployment production trước.
+- Backend `npm test -- --reporter=dot` và `npm run build`: đạt trước thay đổi Phase 5 theo terminal hiện tại.
+- Validation sau thay đổi Phase 5 phải xem báo cáo cuối task/CI; không suy diễn từ artifact cũ.
+
+## Chưa hoàn thành / blocker
+
+- Chưa có URL public, cấu hình host thật, persistent volume thật, TLS/CORS production hay smoke trên hai thiết bị.
+- Chưa đo Lighthouse production; chưa chứng minh Performance/Accessibility ≥ 90.
+- Chưa có PostgreSQL, multi-instance locking, HA, backup tự động hay restore drill.
+- Recovery code là anonymous bearer credential; chưa có account auth, rotation/revocation hoặc server-side rate limiting.
+- Full-game E2E có nhưng chưa chứng minh mọi nhánh và mọi môi trường thiết bị.
+
+## Quyết định scope
+
+Phase 5 dùng static host bất kỳ + backend Node single-instance persistent disk. Không thêm Worker/D1. PostgreSQL HA vẫn là nâng cấp tương lai, không phải tuyên bố đã xong.

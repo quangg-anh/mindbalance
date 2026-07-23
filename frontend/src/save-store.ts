@@ -13,7 +13,7 @@ import type { GameState } from '@game/game-core';
 const SLOT_PREFIX = 'bon-nam-save-';
 const TOKEN_KEY = 'bon-nam-token';
 const QUEUE_KEY = 'bon-nam-sync-queue';
-const SYNC_BASE = '/v1/saves';
+const SYNC_BASE = (import.meta.env.VITE_API_BASE_URL || '/v1/saves').replace(/\/$/, '');
 
 export type { SaveEnvelope };
 
@@ -35,11 +35,19 @@ export interface ConflictInfo {
   slot: number;
   local: SaveEnvelope;
   cloud: CloudPayload;
+  etag: string;
 }
 
-export interface SyncResult {
-  queued: boolean;
-}
+export type SyncResult =
+  | { status: 'success'; payload: CloudPayload }
+  | { status: 'queued' }
+  | { status: 'conflict'; conflict: ConflictInfo }
+  | { status: 'empty' };
+
+export type PullResult =
+  | { status: 'success'; payload: CloudPayload; etag: string }
+  | { status: 'not-found' }
+  | { status: 'error'; message: string };
 
 export interface FlushResult {
   ok: number;
@@ -109,6 +117,16 @@ export function getToken(): string {
   return token;
 }
 
+/** Mã khôi phục nhạy cảm: người giữ mã có thể đọc/ghi cloud save. */
+export function exportSyncCode(): string { return getToken(); }
+
+export function importSyncCode(value: string): boolean {
+  const token = value.trim();
+  if (token.length < 16 || token.length > 512 || /\s/.test(token)) return false;
+  writeRaw(TOKEN_KEY, token);
+  return true;
+}
+
 /* ----------------------------- envelope ----------------------------- */
 
 function looksLikeEnvelope(raw: unknown): raw is SaveEnvelope {
@@ -156,7 +174,8 @@ export function loadSave(slot: number): SaveEnvelope | null {
       /* fall through */
     }
   }
-  const legacy = importLegacy((k) => readRaw(k))[0];
+  const legacyKey = `vn_slot_${slot}`;
+  const legacy = importLegacy((k) => readRaw(k)).find((entry) => entry.key === legacyKey);
   return legacy?.save ?? null;
 }
 
@@ -223,6 +242,10 @@ function writeQueue(entries: QueueEntry[]): void {
   writeRaw(QUEUE_KEY, JSON.stringify(entries));
 }
 
+function enqueue(entry: QueueEntry): void {
+  writeQueue([...readQueue().filter((queued) => queued.slot !== entry.slot), entry]);
+}
+
 function makeEntry(slot: number): QueueEntry {
   const env = loadSave(slot);
   return {
@@ -239,27 +262,34 @@ export function resolveConflictNewest(local: SaveEnvelope, cloud: CloudPayload):
   return cloud.revision > local.revision;
 }
 
-/** Đẩy trạng thái slot lên cloud (PUT). Offline/lỗi → enqueue. Trả {queued}. */
-export async function syncPush(slot: number): Promise<SyncResult> {
+const slotPushes = new Map<number, Promise<SyncResult>>();
+
+/** Serialize PUT cùng slot; offline/lỗi enqueue. */
+export function syncPush(slot: number): Promise<SyncResult> {
+  const prior = slotPushes.get(slot) ?? Promise.resolve<SyncResult>({ status: 'empty' });
+  const next = prior.catch(() => ({ status: 'queued' } as SyncResult)).then(() => performPush(slot));
+  slotPushes.set(slot, next);
+  void next.finally(() => { if (slotPushes.get(slot) === next) slotPushes.delete(slot); });
+  return next;
+}
+
+async function performPush(slot: number): Promise<SyncResult> {
   const env = loadSave(slot);
-  if (!env) return { queued: false };
+  if (!env) return { status: 'empty' };
   const entry = makeEntry(slot);
 
   if (!isOnline()) {
-    const q = readQueue();
-    q.push(entry);
-    writeQueue(q);
-    return { queued: true };
+    enqueue(entry);
+    return { status: 'queued' };
   }
 
   try {
-    await attemptPush(slot, env.state, env.revision, entry.idempotencyKey);
-    return { queued: false };
+    const result = await attemptPush(slot, env.state, env.revision, entry.idempotencyKey);
+    if (result.status === 'conflict') enqueue(entry);
+    return result;
   } catch {
-    const q = readQueue();
-    q.push(entry);
-    writeQueue(q);
-    return { queued: true };
+    enqueue(entry);
+    return { status: 'queued' };
   }
 }
 
@@ -271,7 +301,7 @@ async function attemptPush(
   state: GameState,
   revision: number,
   idempotencyKey: string,
-): Promise<void> {
+): Promise<Extract<SyncResult, { status: 'success' | 'conflict' }>> {
   const token = getToken();
   const res = await fetch(`${SYNC_BASE}/${slot}`, {
     method: 'PUT',
@@ -291,11 +321,10 @@ async function attemptPush(
     } catch {
       cloud = { slot, revision, data: null };
     }
-    const local = loadSave(slot);
-    if (local && conflictHandler) {
-      conflictHandler({ slot, local, cloud });
-    }
-    return;
+    const local = loadSave(slot) ?? { version: SAVE_SCHEMA_VERSION, revision, savedAt: new Date().toISOString(), state };
+    const conflict = { slot, local, cloud, etag: res.headers?.get?.('etag') ?? `"${cloud.revision}"` };
+    conflictHandler?.(conflict);
+    return { status: 'conflict', conflict };
   }
 
   if (!res.ok) throw new Error(`sync status ${res.status}`);
@@ -310,6 +339,29 @@ async function attemptPush(
   if (body && typeof body.revision === 'number') {
     setSave(slot, state, body.revision);
   }
+  return { status: 'success', payload: { slot, revision: body?.revision ?? revision, data: state } };
+}
+
+export async function syncPull(slot: number): Promise<PullResult> {
+  try {
+    const res = await fetch(`${SYNC_BASE}/${slot}`, { headers: { authorization: `Bearer ${getToken()}` } });
+    if (res.status === 404) return { status: 'not-found' };
+    if (!res.ok) return { status: 'error', message: `sync status ${res.status}` };
+    const payload = (await res.json()) as CloudPayload;
+    return { status: 'success', payload, etag: res.headers.get('etag') ?? `"${payload.revision}"` };
+  } catch (error) {
+    return { status: 'error', message: error instanceof Error ? error.message : 'network_error' };
+  }
+}
+
+export function acceptCloud(slot: number, cloud: CloudPayload): SaveEnvelope {
+  return setSave(slot, cloud.data as GameState, cloud.revision);
+}
+
+export async function forcePushLocal(info: ConflictInfo): Promise<SyncResult> {
+  const local = loadSave(info.slot) ?? info.local;
+  setSave(info.slot, local.state, info.cloud.revision);
+  return syncPush(info.slot);
 }
 
 /** Flush queue khi online. Thất bại giữ lại. Trả {ok, remaining}. */
@@ -321,12 +373,13 @@ export async function flushQueue(): Promise<FlushResult> {
     const entry = q[0]!;
     const local = loadSave(entry.slot);
     try {
-      await attemptPush(
+      const result = await attemptPush(
         entry.slot,
         local?.state ?? entry.state,
         local?.revision ?? entry.revision,
         entry.idempotencyKey,
       );
+      if (result.status === 'conflict') break;
       ok += 1;
       q = q.slice(1);
       writeQueue(q);

@@ -1,13 +1,14 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { content, surprisesById } from '@game/game-content';
-import { dispatch, initialState, type GameState, resolveEnding, type Command } from '@game/game-core';
+import { dispatch, initialState, type GameState, type Command } from '@game/game-core';
 import {
   activityDialogues,
   activityDialogueVariants,
   activityScenes,
   backgrounds,
   eventDialogues,
+  surpriseDialogues,
   eventScenes,
   portraits,
   seasonBackgrounds,
@@ -23,7 +24,9 @@ import './style.css';
 import { gameAudio, type MusicMood } from './sound';
 import { EndingGallery, markEndingSeen } from './gallery';
 import { OfflineBanner } from './offline-banner';
-import { loadSave, setSave, syncPush, bindOnlineFlush, getToken } from './save-store';
+import { useModalFocus } from './focus-trap';
+import { acceptCloud, bindOnlineFlush, deleteSlot, exportSyncCode, forcePushLocal, importSyncCode, listSlots, loadSave, onConflict, setSave, syncPull, syncPush, type ConflictInfo } from './save-store';
+import { firstUnreadBeat, markBeatRead, parseTimeline } from './lifecycle';
 import {
   loadSettings,
   saveSettings,
@@ -35,7 +38,6 @@ import {
   type DialogueSpeed,
 } from './settings';
 
-const SLOT = 0;
 const SOUND_KEY = 'bon-nam-sound';
 
 // TODO: khi Agent 02 hoàn tất openGallery, dùng kết nối này thay setGalleryOpen.
@@ -50,20 +52,6 @@ const STAT_LABELS: Record<string, string> = {
   money: 'Tiền',
   debt: 'Nợ',
 };
-
-function loadState(): GameState {
-  const env = loadSave(SLOT);
-  if (env && env.state) {
-    const saved = env.state;
-    if (saved.month >= 48 && !saved.pendingEvent && !saved.pendingSurprise && !saved.ending) {
-      saved.flags = { ...saved.flags, graduated: saved.stats.knowledge >= 35 };
-      saved.ending = resolveEnding(saved, content);
-      setSave(SLOT, saved, env.revision);
-    }
-    return saved;
-  }
-  return initialState(Date.now());
-}
 
 function yearLabel(month: number) {
   return `Năm ${Math.min(4, Math.ceil(month / 12) || 1)}`;
@@ -87,6 +75,11 @@ function StageCast({ cast, spotlight }: { cast: PortraitId[]; spotlight?: Portra
       ))}
     </div>
   );
+}
+
+function ModalPanel({ className, labelledBy, children }: { className: string; labelledBy: string; children: React.ReactNode }) {
+  const ref = useModalFocus<HTMLElement>();
+  return <section ref={ref} tabIndex={-1} className={className} role="dialog" aria-modal="true" aria-labelledby={labelledBy} onMouseDown={(event) => event.stopPropagation()}>{children}</section>;
 }
 
 function StatBars({ stats }: { stats: GameState['stats'] }) {
@@ -118,10 +111,14 @@ function StatBars({ stats }: { stats: GameState['stats'] }) {
 }
 
 function App() {
-  const [state, setState] = React.useState<GameState>(loadState);
+  const [activeSlot, setActiveSlot] = React.useState(0);
+  const [screen, setScreen] = React.useState<'title' | 'game' | 'timeline'>('title');
+  const [slotVersion, setSlotVersion] = React.useState(0);
+  const [state, setState] = React.useState<GameState>(() => initialState(Date.now()));
   const [previewActivity, setPreviewActivity] = React.useState<string | null>(null);
   const [conversation, setConversation] = React.useState<{ activityId: string; beats: DialogueBeat[]; index: number } | null>(null);
   const [eventBeatIndex, setEventBeatIndex] = React.useState(0);
+  const [surpriseBeatIndex, setSurpriseBeatIndex] = React.useState(0);
   const [leaving, setLeaving] = React.useState(false);
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [galleryOpen, setGalleryOpen] = React.useState(false);
@@ -129,6 +126,9 @@ function App() {
   const [settings, setSettings] = React.useState<Settings>(() => loadSettings());
   const [transitioning, setTransitioning] = React.useState(false);
   const [toast, setToast] = React.useState<string | null>(null);
+  const [conflict, setConflict] = React.useState<ConflictInfo | null>(null);
+  const [syncCode, setSyncCode] = React.useState('');
+  const previousBackground = React.useRef<BackgroundId | null>(null);
 
   // Áp settings: --font-scale, class reduced-motion. Delay giữa dialogue beat.
   React.useEffect(() => {
@@ -142,6 +142,8 @@ function App() {
     const unbind = bindOnlineFlush();
     return unbind;
   }, []);
+
+  React.useEffect(() => onConflict(setConflict), []);
 
   React.useEffect(() => {
     if (!toast) return;
@@ -168,8 +170,16 @@ function App() {
   }, []);
 
   React.useEffect(() => {
-    setEventBeatIndex(0);
-  }, [state.pendingEvent]);
+    const id = state.pendingEvent;
+    const count = id ? eventDialogues[id]?.length ?? 0 : 0;
+    setEventBeatIndex(id ? firstUnreadBeat('event', id, count, settings.skipRead) : 0);
+  }, [state.pendingEvent, settings.skipRead]);
+
+  React.useEffect(() => {
+    const id = state.pendingSurprise;
+    const count = id ? surpriseDialogues[id]?.length ?? 0 : 0;
+    setSurpriseBeatIndex(id ? firstUnreadBeat('surprise', id, count, settings.skipRead) : 0);
+  }, [state.pendingSurprise, settings.skipRead]);
 
   React.useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -184,11 +194,18 @@ function App() {
       const target = event.target as HTMLElement | null;
       if (target?.closest('button, input, textarea, select, a')) return;
       const currentEventBeats = state.pendingEvent ? eventDialogues[state.pendingEvent] ?? [] : [];
+      const currentSurpriseBeats = state.pendingSurprise ? surpriseDialogues[state.pendingSurprise] ?? [] : [];
       if (currentEventBeats.length > 0 && eventBeatIndex < currentEventBeats.length - 1) {
         event.preventDefault();
+        markBeatRead('event', state.pendingEvent!, eventBeatIndex);
         setEventBeatIndex((index) => index + 1);
+      } else if (currentSurpriseBeats.length > 0 && surpriseBeatIndex < currentSurpriseBeats.length - 1) {
+        event.preventDefault();
+        markBeatRead('surprise', state.pendingSurprise!, surpriseBeatIndex);
+        setSurpriseBeatIndex((index) => index + 1);
       } else if (conversation) {
         event.preventDefault();
+        markBeatRead('activity', conversation.activityId, conversation.index);
         setConversation((current) => {
           if (!current) return null;
           return current.index < current.beats.length - 1 ? { ...current, index: current.index + 1 } : null;
@@ -197,11 +214,11 @@ function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [conversation, eventBeatIndex, menuOpen, galleryOpen, state.pendingEvent]);
+  }, [conversation, eventBeatIndex, surpriseBeatIndex, menuOpen, galleryOpen, state.pendingEvent, state.pendingSurprise]);
 
   const restart = () => {
     const next = initialState(Date.now());
-    setSave(SLOT, next, 0);
+    setSave(activeSlot, next, 0);
     setPreviewActivity(null);
     setConversation(null);
     setLeaving(false);
@@ -222,8 +239,10 @@ function App() {
     if (monthChange) setTransitioning(true);
     setState((s) => {
       const next = dispatch(s, command, content);
-      setSave(SLOT, next);
-      void syncPush(SLOT);
+      setSave(activeSlot, next);
+      if (command.type === 'ADVANCE_MONTH' || command.type === 'CHOOSE_EVENT_OPTION' || command.type === 'CHOOSE_SURPRISE_OPTION' || command.type === 'CONFIRM_STOP_JOURNEY') {
+        window.setTimeout(() => void syncPush(activeSlot), 0);
+      }
       return next;
     });
     setPreviewActivity(null);
@@ -235,8 +254,27 @@ function App() {
     }
   };
 
+  const continueSlot = async (slot: number) => {
+    const local = loadSave(slot);
+    const pulled = await syncPull(slot);
+    if (pulled.status === 'success') {
+      if (local && local.revision !== pulled.payload.revision) {
+        setConflict({ slot, local, cloud: pulled.payload, etag: pulled.etag });
+        return;
+      }
+      const cloud = acceptCloud(slot, pulled.payload);
+      setActiveSlot(slot); setState(cloud.state); setSlotVersion((value) => value + 1); setScreen('game');
+      return;
+    }
+    if (local) { setActiveSlot(slot); setState(local.state); setScreen('game'); }
+    else setToast(pulled.status === 'error' ? 'Không thể tải cloud save' : 'Slot chưa có dữ liệu');
+  };
+
   const event = content.events.find((e) => e.id === state.pendingEvent);
   const surprise = state.pendingSurprise ? surprisesById[state.pendingSurprise] : undefined;
+  const surpriseBeats = surprise ? surpriseDialogues[surprise.id] ?? [] : [];
+  const surpriseBeat = surpriseBeats[surpriseBeatIndex];
+  const surpriseIntroComplete = !surprise || surpriseBeats.length === 0 || surpriseBeatIndex >= surpriseBeats.length - 1;
   const ending = content.endings.find((e) => e.id === state.ending);
   const eventBeats = event ? eventDialogues[event.id] ?? [] : [];
   const eventBeat = eventBeats[eventBeatIndex];
@@ -266,8 +304,9 @@ function App() {
   } else if (surprise) {
     bg = surpriseSceneById[surprise.id] ?? surpriseBackgrounds[surprise.category] ?? 'campus';
     cast = surprise.category === 'relationship' ? ['minh', 'lan', 'huy'] : surprise.category === 'work' ? ['minh', 'phong'] : ['minh'];
-    speaker = 'Tình huống bất ngờ';
-    line = 'Một chuyện không nằm trong kế hoạch đã xảy ra.';
+    const surpriseSpeaker = surpriseBeat?.speaker;
+    speaker = surpriseSpeaker === 'narrator' || !surpriseSpeaker ? '…' : content.characters.find((c) => c.id === surpriseSpeaker)?.name ?? 'Minh';
+    line = surpriseBeat?.line ?? 'Một chuyện không nằm trong kế hoạch đã xảy ra.';
     title = surprise.title;
   } else if (event) {
     const scene = eventScenes[event.id] ?? { bg: 'campus' as const, cast: ['minh'] as PortraitId[], line: event.title };
@@ -310,7 +349,38 @@ function App() {
 
   return (
     <div className={`game season-${season} ${leaving ? 'is-leaving' : ''} ${transitioning ? 'is-transitioning' : ''} ${surprise ? 'has-surprise' : ''}`}>
-      <div className="stage" style={{ backgroundImage: `url(${backgrounds[bg]})` }}>
+      {screen === 'title' && (
+        <section className="title-screen" aria-labelledby="title-screen-heading">
+          <div className="title-card">
+            <small>Visual novel đời sinh viên</small><h1 id="title-screen-heading">Bốn Năm Thanh Xuân</h1>
+            <div className="title-actions">
+              <button type="button" className="advance" onClick={() => setScreen('game')}>Chơi mới</button>
+              <button type="button" onClick={() => document.querySelector<HTMLElement>('.slot-manager')?.focus()}>Tiếp tục</button>
+              <button type="button" onClick={() => { setMenuOpen(true); setScreen('game'); }}>Cài đặt</button>
+              <button type="button" onClick={() => setGalleryOpen(true)}>Gallery</button>
+            </div>
+            <div className="slot-manager" tabIndex={-1} aria-label="Quản lý 4 slot lưu">
+              {[0, 1, 2, 3].map((slot) => {
+                const summary = listSlots().find((item) => item.slot === slot);
+                return <article key={`${slot}-${slotVersion}`} className={activeSlot === slot ? 'is-active' : ''}>
+                  <strong>Slot {slot + 1}</strong><span>{summary ? `${yearLabel(summary.month)} · ${new Date(summary.savedAt).toLocaleDateString('vi-VN')}` : 'Trống'}</span>
+                  <div>
+                    <button type="button" onClick={() => { const next = initialState(Date.now()); setActiveSlot(slot); setState(next); setSave(slot, next, 0); setSlotVersion((v) => v + 1); setScreen('game'); }}>Mới</button>
+                    <button type="button" onClick={() => void continueSlot(slot)}>Tiếp tục / Cloud</button>
+                    <button type="button" disabled={!summary} className="danger" onClick={() => { if (confirm(`Xóa Slot ${slot + 1}? Hành động này không thể hoàn tác.`)) { deleteSlot(slot); setSlotVersion((v) => v + 1); } }}>Xóa</button>
+                  </div>
+                </article>;
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+      {screen === 'timeline' && (
+        <section className="journey-screen"><div className="journey-card"><small>Kết thúc</small><h2>Timeline hành trình</h2><ol>{parseTimeline(state.history).map((item, index) => <li key={`${index}-${item.label}`}><span>Mùa {item.season}</span><strong>{item.kind}</strong><p>{item.label}</p></li>)}</ol><button type="button" className="advance" onClick={() => setScreen('title')}>Về title</button></div></section>
+      )}
+      <div className="stage">
+        {previousBackground.current && previousBackground.current !== bg && <div className="stage-background stage-background-previous" style={{ backgroundImage: `url(${backgrounds[previousBackground.current]})` }} aria-hidden="true" />}
+        <div key={bg} className="stage-background stage-background-current" style={{ backgroundImage: `url(${backgrounds[bg]})` }} aria-hidden="true" onAnimationEnd={() => { previousBackground.current = bg; }} />
         <div className="stage-veil" />
         <div className="scene-depth scene-depth-back" aria-hidden="true" />
         <div className="scene-depth scene-depth-front" aria-hidden="true" />
@@ -359,7 +429,10 @@ function App() {
             <p className="speaker">{speaker}</p>
             <p className="line" style={{ whiteSpace: 'pre-wrap' }}>{line}</p>
 
-            {surprise && !state.ending && (
+            {surprise && !state.ending && !surpriseIntroComplete && (
+              <div className="conversation-actions event-progress"><span>{surpriseBeatIndex + 1} / {surpriseBeats.length}</span><button type="button" className="advance" onClick={() => { markBeatRead('surprise', surprise.id, surpriseBeatIndex); setSurpriseBeatIndex((index) => index + 1); }}>Tiếp tục</button></div>
+            )}
+            {surprise && !state.ending && surpriseIntroComplete && (
               <div className="surprise-panel">
                 <div className="surprise-label">Bất ngờ · {surprise.category}</div>
                 <h3>{surprise.title}</h3>
@@ -377,7 +450,7 @@ function App() {
             {event && !surprise && !state.ending && !eventIntroComplete && (
               <div className="conversation-actions event-progress">
                 <span>{eventBeatIndex + 1} / {eventBeats.length}</span>
-                <button type="button" className="advance" onClick={() => setEventBeatIndex((index) => index + 1)}>
+                <button type="button" className="advance" onClick={() => { markBeatRead('event', event.id, eventBeatIndex); setEventBeatIndex((index) => index + 1); }}>
                   Tiếp tục
                 </button>
               </div>
@@ -402,8 +475,10 @@ function App() {
                   className="advance"
                   onClick={() => {
                     if (conversation.index < conversation.beats.length - 1) {
+                      markBeatRead('activity', conversation.activityId, conversation.index);
                       setConversation({ ...conversation, index: conversation.index + 1 });
                     } else {
+                      markBeatRead('activity', conversation.activityId, conversation.index);
                       setConversation(null);
                       setPreviewActivity(null);
                     }
@@ -435,7 +510,7 @@ function App() {
                           const variants = activityDialogueVariants[a.id];
                           const previousCount = state.history.filter((entry) => entry.includes(`:activity:${a.id}`)).length;
                           const beats = variants?.[(previousCount + Math.floor((state.month - 1) / 12)) % variants.length] ?? activityDialogues[a.id];
-                          if (beats?.length) setConversation({ activityId: a.id, beats, index: 0 });
+                          if (beats?.length) setConversation({ activityId: a.id, beats, index: firstUnreadBeat('activity', a.id, beats.length, settings.skipRead) });
                         }}
                       >
                         <span className="activity-thumb" style={scene ? { backgroundImage: `url(${backgrounds[scene.bg]})` } : undefined}>
@@ -481,6 +556,8 @@ function App() {
                 <button type="button" className="advance" onClick={restart}>
                   Bắt đầu hành trình mới
                 </button>
+                <button type="button" className="ghost" onClick={() => setScreen('timeline')}>Xem timeline hành trình</button>
+                <button type="button" className="ghost" onClick={() => setScreen('title')}>Về title</button>
               </div>
             )}
           </div>
@@ -490,7 +567,7 @@ function App() {
       <div className="month-transition" aria-hidden="true"><span>{yearLabel(state.month)}</span><strong>{seasonLabel(state.month)}</strong></div>
       {menuOpen && (
         <div className="game-menu-backdrop" role="presentation" onMouseDown={() => setMenuOpen(false)}>
-          <section className="game-menu" role="dialog" aria-modal="true" aria-labelledby="game-menu-title" onMouseDown={(event) => event.stopPropagation()}>
+          <ModalPanel className="game-menu" labelledBy="game-menu-title">
             <div className="menu-heading">
               <div><small>Tạm dừng</small><h2 id="game-menu-title">Bốn Năm Thanh Xuân</h2></div>
               <button type="button" className="menu-close" onClick={() => { gameAudio.play('click'); setMenuOpen(false); }} aria-label="Đóng menu">×</button>
@@ -568,19 +645,40 @@ function App() {
               </label>
 
               <button type="button" onClick={() => {
-                setSave(SLOT, state);
-                void syncPush(SLOT).then(() => setToast('Đã đẩy đồng bộ đám mây'));
+                setSave(activeSlot, state);
+                void syncPush(activeSlot).then((result) => setToast(result.status === 'success' ? 'Đã đồng bộ đám mây' : result.status === 'conflict' ? 'Cần xử lý xung đột' : 'Đã xếp hàng đồng bộ'));
               }}>Đồng bộ đám mây</button>
+              <label className="menu-field sync-code-field">
+                <span>Mã khôi phục đồng bộ</span>
+                <input type="password" autoComplete="off" value={syncCode} onChange={(event) => setSyncCode(event.target.value)} placeholder="Nhập mã từ thiết bị khác" />
+              </label>
+              <button type="button" onClick={() => { if (importSyncCode(syncCode)) { setSyncCode(''); setToast('Đã nhập mã khôi phục'); } else setToast('Mã khôi phục không hợp lệ'); }}>Nhập mã khôi phục</button>
+              <button type="button" onClick={() => { setSyncCode(exportSyncCode()); setToast('Mã hiển thị trong ô phía trên'); }}>Hiện mã khôi phục</button>
+              <p className="sensitive-warning">Mã này nhạy cảm. Người có mã có thể đọc và ghi cloud save. Không chia sẻ hoặc đăng công khai.</p>
               <button type="button" onClick={() => { gameAudio.play('click'); setGalleryOpen(true); setMenuOpen(false); }}>Bộ sưu tập kết thúc</button>
-              <button type="button" onClick={() => { setSave(SLOT, state); setToast('Đã lưu hành trình'); setMenuOpen(false); }}>Lưu hành trình</button>
+              <button type="button" onClick={() => { setSave(activeSlot, state); setToast('Đã lưu hành trình'); setMenuOpen(false); }}>Lưu hành trình</button>
+              <button type="button" onClick={() => { setMenuOpen(false); setScreen('title'); }}>Về title</button>
               <button type="button" className="danger" onClick={() => { if (confirm('Xóa hành trình hiện tại và chơi lại từ đầu?')) { restart(); setMenuOpen(false); } }}>Chơi lại từ đầu</button>
             </div>
-            <p className="menu-hint">ESC mở menu · Enter tiếp tục hội thoại · Token {getToken().slice(0, 8)}</p>
-          </section>
+            <p className="menu-hint">ESC mở menu · Enter tiếp tục hội thoại</p>
+          </ModalPanel>
         </div>
       )}
       <OfflineBanner />
       {galleryOpen && <EndingGallery onClose={() => setGalleryOpen(false)} />}
+      {conflict && (
+        <div className="game-menu-backdrop" role="presentation">
+          <ModalPanel className="game-menu" labelledBy="sync-conflict-title">
+            <div className="menu-heading"><div><small>Đồng bộ</small><h2 id="sync-conflict-title">Xung đột save Slot {conflict.slot + 1}</h2></div></div>
+            <p>Bản local revision {conflict.local.revision}; bản cloud revision {conflict.cloud.revision}. Chọn bản muốn giữ.</p>
+            <div className="menu-options">
+              <button type="button" onClick={() => { const selected = conflict; setConflict(null); void forcePushLocal(selected).then((result) => setToast(result.status === 'success' ? 'Đã giữ bản local' : 'Chưa thể đẩy bản local')); }}>Giữ bản local</button>
+              <button type="button" onClick={() => { const selected = acceptCloud(conflict.slot, conflict.cloud); setActiveSlot(conflict.slot); setState(selected.state); setSlotVersion((value) => value + 1); setConflict(null); setScreen('game'); setToast('Đã dùng bản cloud'); }}>Dùng bản cloud</button>
+              <button type="button" onClick={() => setConflict(null)}>Để sau</button>
+            </div>
+          </ModalPanel>
+        </div>
+      )}
     </div>
   );
 }

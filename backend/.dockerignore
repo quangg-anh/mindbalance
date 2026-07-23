@@ -1,0 +1,14 @@
+node_modules
+dist
+dist-types
+coverage
+test-results
+data
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.git
+.github
+Dockerfile*
+README*
