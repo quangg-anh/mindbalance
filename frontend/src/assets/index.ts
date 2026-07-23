@@ -66,12 +66,11 @@ export const seasonBackgrounds: Record<SeasonId, BackgroundId> = {
   reunion: 'seasonReunion',
 };
 
-export const seasonLabels: Record<SeasonId, string> = {
-  enroll: 'Mùa nhập học',
-  challenge: 'Mùa thử thách',
-  growth: 'Mùa trưởng thành',
-  reunion: 'Mùa sum họp',
-};
+/** Label mùa lấy từ `content.seasons` (single source ở game-content). */
+export { seasons as contentSeasons } from '@game/game-content';
+export function seasonLabelById(seasons: { id: string; name: string }[], id: SeasonId): string {
+  return seasons.find((s) => s.id === id)?.name ?? id;
+}
 
 export const surpriseBackgrounds: Record<string, BackgroundId> = {
   study: 'surpriseStudy',
@@ -115,6 +114,9 @@ export interface EventDialogueBeat {
   speaker: EventDialogueSpeaker;
   line: string;
 }
+
+/** Surprise dùng cùng quy ước narrator với event để UI chạy từng beat trước choice. */
+export type SurpriseDialogueBeat = EventDialogueBeat;
 
 export const activityDialogues: Record<string, DialogueBeat[]> = {
   study: [{ speaker: 'lan', line: 'Minh, phần này cậu hiểu chưa? Tớ giải lại nhé.' }, { speaker: 'minh', line: 'Ừ, cảm ơn Lan. Lần này tớ sẽ tự làm nốt bài cuối.' }],
@@ -300,6 +302,70 @@ export const eventDialogues: Record<string, EventDialogueBeat[]> = {
   ],
 };
 
+
+/** Hội thoại mở đầu cho 12 tình huống bất ngờ. Choice chỉ hiện sau beat cuối. */
+export const surpriseDialogues: Record<string, SurpriseDialogueBeat[]> = {
+  'pop-quiz': [
+    { speaker: 'narrator', line: 'Giảng viên đặt xấp đề xuống bàn khi cả lớp chưa kịp mở vở.' },
+    { speaker: 'lan', line: 'Kiểm tra đột xuất đấy. Cậu bình tĩnh, nhớ được gì thì làm chắc phần đó.' },
+    { speaker: 'minh', line: 'Mình có vài cách để vượt qua tiết này. Cách nào cũng để lại một điều phải chịu.' },
+  ],
+  'lost-group-file': [
+    { speaker: 'narrator', line: 'Thư mục bài nhóm mở ra trống rỗng. Bản nộp chỉ còn cách vài giờ.' },
+    { speaker: 'lan', line: 'Tớ đã tìm cả thùng rác và lịch sử đồng bộ. Không còn bản nào nguyên vẹn.' },
+    { speaker: 'minh', line: 'Trách nhau lúc này không cứu được bài. Nhưng cách cứu bài cũng có giá.' },
+  ],
+  'job-scam': [
+    { speaker: 'narrator', line: 'Một tin nhắn hứa mức lương khó tin, kèm yêu cầu đóng phí ngay tối nay.' },
+    { speaker: 'phong', line: 'Việc thật không cần em trả tiền để được nhận. Nhưng lúc thiếu tiền, lời hứa nghe rất ngọt.' },
+    { speaker: 'minh', line: 'Nếu bỏ qua, mình có thể mất cơ hội. Nếu tin vội, thứ mất có thể nhiều hơn.' },
+  ],
+  'food-poisoning': [
+    { speaker: 'narrator', line: 'Nửa đêm, cơn đau bụng kéo Minh tỉnh dậy giữa căn phòng tối.' },
+    { speaker: 'huy', line: 'Cậu tái lắm. Đừng cố chịu một mình — nói tớ biết cậu muốn làm gì.' },
+    { speaker: 'minh', line: 'Ngày mai còn lịch học và ca làm. Nhưng trước hết mình phải quyết định đối xử với cơ thể thế nào.' },
+  ],
+  'exercise-injury': [
+    { speaker: 'narrator', line: 'Một bước tiếp đất lệch khiến cơn đau chạy dọc chân Minh.' },
+    { speaker: 'huy', line: 'Dừng lại đã. Cố thêm một vòng không chứng minh được gì đâu.' },
+    { speaker: 'minh', line: 'Nghỉ sẽ mất nhịp, đi khám sẽ tốn tiền. Tập tiếp có thể khiến cái giá lớn hơn.' },
+  ],
+  'lan-rumor': [
+    { speaker: 'narrator', line: 'Một câu đùa trong nhóm lớp biến thành tin đồn về Minh và Lan.' },
+    { speaker: 'lan', line: 'Tớ không muốn người khác quyết định câu chuyện của hai đứa. Nhưng im lặng cũng có thể bị hiểu khác.' },
+    { speaker: 'minh', line: 'Mình cần nghĩ tới cảm xúc của Lan, không chỉ cách thoát khỏi ánh mắt mọi người.' },
+  ],
+  'forgotten-birthday': [
+    { speaker: 'narrator', line: 'Ngày sắp hết. Không tin nhắn nào nhắc tới sinh nhật Minh.' },
+    { speaker: 'minh', line: 'Có lẽ mọi người chỉ bận. Có lẽ mình không cần xem chuyện này quan trọng.' },
+    { speaker: 'narrator', line: 'Buồn không buộc Minh phải trách ai. Minh vẫn phải chọn cách chăm sóc cảm xúc ấy.' },
+  ],
+  'found-wallet': [
+    { speaker: 'narrator', line: 'Một chiếc ví nằm dưới ghế đá, bên trong có tiền và giấy tờ.' },
+    { speaker: 'minh', line: 'Số tiền này đủ giải quyết vài chuyện trước mắt. Chủ ví chắc cũng đang cuống cuồng tìm.' },
+    { speaker: 'narrator', line: 'Không ai đứng gần để nhìn. Lựa chọn vẫn đi cùng Minh sau khi rời khỏi đây.' },
+  ],
+  'wage-theft': [
+    { speaker: 'narrator', line: 'Ngày trả lương qua rồi. Chủ quán lại hẹn Minh sang tháng.' },
+    { speaker: 'phong', line: 'Em cần tiền, nhưng họ cũng biết em sợ mất việc. Đừng để lời hẹn thay cho bằng chứng.' },
+    { speaker: 'minh', line: 'Đòi tới cùng có thể mất ca làm. Chờ tiếp thì mọi kế hoạch đều treo lại.' },
+  ],
+  'small-lottery-win': [
+    { speaker: 'narrator', line: 'Dãy số trùng nhau. Không đủ đổi đời, nhưng đủ khiến căn phòng bỗng sáng hơn.' },
+    { speaker: 'ong-tu', line: 'Có lộc thì mừng, cháu. Chỉ đừng để một lần trúng thành lý do mua thêm mãi.' },
+    { speaker: 'minh', line: 'Khoản tiền này có thể vá một lỗ hổng, chia sẻ, hoặc kéo mình sâu hơn vào vận may.' },
+  ],
+  'account-hijack': [
+    { speaker: 'narrator', line: 'Mật khẩu bị đổi. Tin nhắn lạ đang được gửi từ tài khoản của Minh.' },
+    { speaker: 'huy', line: 'Khóa phiên đăng nhập trước. Mỗi phút chậm là thêm một người có thể bị lừa.' },
+    { speaker: 'minh', line: 'Mình phải giành lại tài khoản, rồi quyết định có nói thật với mọi người không.' },
+  ],
+  'elevator-stuck': [
+    { speaker: 'narrator', line: 'Thang máy giật nhẹ rồi đứng im. Đèn khẩn cấp phủ cả nhóm màu vàng nhạt.' },
+    { speaker: 'huy', line: 'Không có sóng mạnh. Ai đó bấm chuông cứu hộ, còn lại đừng chen vào cửa.' },
+    { speaker: 'minh', line: 'Không gian càng chật, ai cũng càng dễ hoảng. Mình cần giữ cả nhóm bình tĩnh.' },
+  ],
+};
 
 export const activityScenes: Record<string, { bg: BackgroundId; cast: PortraitId[]; vibe: string }> = {
   study: { bg: 'classroom', cast: ['minh', 'lan'], vibe: 'Bàn học tối nay còn trống một góc.' },

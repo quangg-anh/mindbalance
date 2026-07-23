@@ -1,7 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { content, surprisesById } from '@game/game-content';
-import { dispatch, initialState, type GameState, importLegacy, resolveEnding, type Command } from '@game/game-core';
+import { dispatch, initialState, type GameState, resolveEnding, type Command } from '@game/game-core';
 import {
   activityDialogues,
   activityDialogueVariants,
@@ -12,7 +12,7 @@ import {
   portraits,
   seasonBackgrounds,
   seasonFromMonth,
-  seasonLabels,
+  seasonLabelById,
   surpriseBackgrounds,
   surpriseSceneById,
   type BackgroundId,
@@ -21,8 +21,25 @@ import {
 } from './assets';
 import './style.css';
 import { gameAudio, type MusicMood } from './sound';
+import { EndingGallery, markEndingSeen } from './gallery';
+import { OfflineBanner } from './offline-banner';
+import { loadSave, setSave, syncPush, bindOnlineFlush, getToken } from './save-store';
+import {
+  loadSettings,
+  saveSettings,
+  effectiveReducedMotion,
+  fontScaleValue,
+  dialogueDelayMs,
+  type Settings,
+  type FontScale,
+  type DialogueSpeed,
+} from './settings';
 
-const KEY = 'bon-nam-save-0';
+const SLOT = 0;
+const SOUND_KEY = 'bon-nam-sound';
+
+// TODO: khi Agent 02 hoàn tất openGallery, dùng kết nối này thay setGalleryOpen.
+// declare function openGallery(): void;
 
 const STAT_LABELS: Record<string, string> = {
   health: 'Sức khỏe',
@@ -35,22 +52,17 @@ const STAT_LABELS: Record<string, string> = {
 };
 
 function loadState(): GameState {
-  const raw = localStorage.getItem(KEY);
-  if (raw) {
-    try {
-      const saved = JSON.parse(raw) as GameState;
-      if (saved.month >= 48 && !saved.pendingEvent && !saved.pendingSurprise && !saved.ending) {
-        saved.flags = { ...saved.flags, graduated: saved.stats.knowledge >= 35 };
-        saved.ending = resolveEnding(saved, content);
-        localStorage.setItem(KEY, JSON.stringify(saved));
-      }
-      return saved;
-    } catch {
-      /* fall through */
+  const env = loadSave(SLOT);
+  if (env && env.state) {
+    const saved = env.state;
+    if (saved.month >= 48 && !saved.pendingEvent && !saved.pendingSurprise && !saved.ending) {
+      saved.flags = { ...saved.flags, graduated: saved.stats.knowledge >= 35 };
+      saved.ending = resolveEnding(saved, content);
+      setSave(SLOT, saved, env.revision);
     }
+    return saved;
   }
-  const legacy = importLegacy((k) => localStorage.getItem(k))[0];
-  return legacy?.save.state ?? initialState(Date.now());
+  return initialState(Date.now());
 }
 
 function yearLabel(month: number) {
@@ -58,7 +70,7 @@ function yearLabel(month: number) {
 }
 
 function seasonLabel(month: number) {
-  return seasonLabels[seasonFromMonth(month)];
+  return seasonLabelById(content.seasons, seasonFromMonth(month));
 }
 
 function StageCast({ cast, spotlight }: { cast: PortraitId[]; spotlight?: PortraitId | null }) {
@@ -112,15 +124,34 @@ function App() {
   const [eventBeatIndex, setEventBeatIndex] = React.useState(0);
   const [leaving, setLeaving] = React.useState(false);
   const [menuOpen, setMenuOpen] = React.useState(false);
-  const [soundOn, setSoundOn] = React.useState(() => localStorage.getItem('bon-nam-sound') !== 'off');
+  const [galleryOpen, setGalleryOpen] = React.useState(false);
+  const [soundOn, setSoundOn] = React.useState(() => localStorage.getItem(SOUND_KEY) !== 'off');
+  const [settings, setSettings] = React.useState<Settings>(() => loadSettings());
   const [transitioning, setTransitioning] = React.useState(false);
   const [toast, setToast] = React.useState<string | null>(null);
+
+  // Áp settings: --font-scale, class reduced-motion. Delay giữa dialogue beat.
+  React.useEffect(() => {
+    document.documentElement.style.setProperty('--font-scale', String(fontScaleValue(settings.fontScale)));
+    document.documentElement.style.setProperty('--beat-delay', `${dialogueDelayMs(settings.dialogueSpeed)}ms`);
+    const reduced = effectiveReducedMotion(settings);
+    document.documentElement.classList.toggle('reduced-motion', reduced);
+  }, [settings]);
+
+  React.useEffect(() => {
+    const unbind = bindOnlineFlush();
+    return unbind;
+  }, []);
 
   React.useEffect(() => {
     if (!toast) return;
     const timer = window.setTimeout(() => setToast(null), 1800);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  React.useEffect(() => {
+    if (state.ending) markEndingSeen(state.ending);
+  }, [state.ending]);
 
   React.useEffect(() => {
     gameAudio.setEnabled(soundOn);
@@ -142,8 +173,14 @@ function App() {
 
   React.useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMenuOpen((open) => !open);
-      if (menuOpen || (event.key !== 'Enter' && event.key !== ' ')) return;
+      if (event.key === 'Escape') {
+        if (galleryOpen) {
+          setGalleryOpen(false);
+          return;
+        }
+        setMenuOpen((open) => !open);
+      }
+      if (menuOpen || galleryOpen || (event.key !== 'Enter' && event.key !== ' ')) return;
       const target = event.target as HTMLElement | null;
       if (target?.closest('button, input, textarea, select, a')) return;
       const currentEventBeats = state.pendingEvent ? eventDialogues[state.pendingEvent] ?? [] : [];
@@ -160,11 +197,11 @@ function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [conversation, eventBeatIndex, menuOpen, state.pendingEvent]);
+  }, [conversation, eventBeatIndex, menuOpen, galleryOpen, state.pendingEvent]);
 
   const restart = () => {
     const next = initialState(Date.now());
-    localStorage.setItem(KEY, JSON.stringify(next));
+    setSave(SLOT, next, 0);
     setPreviewActivity(null);
     setConversation(null);
     setLeaving(false);
@@ -185,7 +222,8 @@ function App() {
     if (monthChange) setTransitioning(true);
     setState((s) => {
       const next = dispatch(s, command, content);
-      localStorage.setItem(KEY, JSON.stringify(next));
+      setSave(SLOT, next);
+      void syncPush(SLOT);
       return next;
     });
     setPreviewActivity(null);
@@ -464,14 +502,85 @@ function App() {
             </div>
             <div className="menu-options">
               <button type="button" onClick={() => { gameAudio.play('click'); setMenuOpen(false); }}>Tiếp tục chơi</button>
-              <button type="button" onClick={() => { const next = !soundOn; setSoundOn(next); localStorage.setItem('bon-nam-sound', next ? 'on' : 'off'); if (next) window.setTimeout(() => gameAudio.play('choice'), 50); }}>Âm thanh <span>{soundOn ? 'Bật' : 'Tắt'}</span></button>
-              <button type="button" onClick={() => { localStorage.setItem(KEY, JSON.stringify(state)); setToast('Đã lưu hành trình'); setMenuOpen(false); }}>Lưu hành trình</button>
+              <button type="button" onClick={() => { const next = !soundOn; setSoundOn(next); localStorage.setItem(SOUND_KEY, next ? 'on' : 'off'); if (next) window.setTimeout(() => gameAudio.play('choice'), 50); }}>Âm thanh <span>{soundOn ? 'Bật' : 'Tắt'}</span></button>
+
+              <label className="menu-field">
+                <span>Cỡ chữ</span>
+                <select
+                  value={settings.fontScale}
+                  onChange={(e) => {
+                    const next = { ...settings, fontScale: e.target.value as FontScale };
+                    setSettings(next);
+                    saveSettings(next);
+                  }}
+                >
+                  <option value="small">Nhỏ</option>
+                  <option value="normal">Vừa</option>
+                  <option value="large">Lớn</option>
+                </select>
+              </label>
+
+              <label className="menu-field">
+                <span>Tốc độ thoại</span>
+                <select
+                  value={settings.dialogueSpeed}
+                  onChange={(e) => {
+                    const next = { ...settings, dialogueSpeed: e.target.value as DialogueSpeed };
+                    setSettings(next);
+                    saveSettings(next);
+                  }}
+                >
+                  <option value="slow">Chậm</option>
+                  <option value="normal">Vừa</option>
+                  <option value="fast">Nhanh</option>
+                </select>
+              </label>
+
+              <label className="menu-field">
+                <span>Giảm hiệu ứng</span>
+                <select
+                  value={settings.reducedMotionOverride === null ? 'auto' : settings.reducedMotionOverride ? 'on' : 'off'}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    const override: boolean | null = v === 'auto' ? null : v === 'on';
+                    const next = { ...settings, reducedMotionOverride: override };
+                    setSettings(next);
+                    saveSettings(next);
+                  }}
+                >
+                  <option value="auto">Tự động</option>
+                  <option value="on">Bật</option>
+                  <option value="off">Tắt</option>
+                </select>
+              </label>
+
+              <label className="menu-field menu-toggle">
+                <span>Bỏ qua đã đọc</span>
+                <input
+                  type="checkbox"
+                  checked={settings.skipRead}
+                  onChange={(e) => {
+                    const next = { ...settings, skipRead: e.target.checked };
+                    setSettings(next);
+                    saveSettings(next);
+                  }}
+                />
+              </label>
+
+              <button type="button" onClick={() => {
+                setSave(SLOT, state);
+                void syncPush(SLOT).then(() => setToast('Đã đẩy đồng bộ đám mây'));
+              }}>Đồng bộ đám mây</button>
+              <button type="button" onClick={() => { gameAudio.play('click'); setGalleryOpen(true); setMenuOpen(false); }}>Bộ sưu tập kết thúc</button>
+              <button type="button" onClick={() => { setSave(SLOT, state); setToast('Đã lưu hành trình'); setMenuOpen(false); }}>Lưu hành trình</button>
               <button type="button" className="danger" onClick={() => { if (confirm('Xóa hành trình hiện tại và chơi lại từ đầu?')) { restart(); setMenuOpen(false); } }}>Chơi lại từ đầu</button>
             </div>
-            <p className="menu-hint">ESC mở menu · Enter tiếp tục hội thoại</p>
+            <p className="menu-hint">ESC mở menu · Enter tiếp tục hội thoại · Token {getToken().slice(0, 8)}</p>
           </section>
         </div>
       )}
+      <OfflineBanner />
+      {galleryOpen && <EndingGallery onClose={() => setGalleryOpen(false)} />}
     </div>
   );
 }

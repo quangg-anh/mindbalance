@@ -7,5 +7,6 @@ export const ActivitySchema = z.object({ id:z.string(), name:z.string(), descrip
 export const EventSchema = z.object({ id:z.string(), title:z.string(), month:z.number().int().min(1).max(48).optional(), deadline:z.number().int().min(1).max(48).optional(), weight:z.number().positive(), prerequisite:z.array(ConditionSchema).default([]), cooldown:z.number().int().nonnegative().default(0), oneShot:z.boolean().default(true), mandatory:z.boolean().default(false), warning:z.string().optional(), choices:z.array(ChoiceSchema).min(1) });
 export const EndingSchema = z.object({ id:z.string(), name:z.string(), group:z.enum(['happy','neutral','bad']), priority:z.number().int(), conditions:z.array(ConditionSchema).min(1) });
 export const CharacterSchema = z.object({ id:z.string(), name:z.string(), role:z.string() });
-export const ContentSchema = z.object({ characters:z.array(CharacterSchema), activities:z.array(ActivitySchema), events:z.array(EventSchema), endings:z.array(EndingSchema) });
-export type Effects=z.infer<typeof EffectsSchema>; export type Condition=z.infer<typeof ConditionSchema>; export type GameContent=z.infer<typeof ContentSchema>;
+export const SeasonSchema = z.object({ id:z.string(), name:z.string(), hint:z.string().optional() });
+export const ContentSchema = z.object({ characters:z.array(CharacterSchema), activities:z.array(ActivitySchema), events:z.array(EventSchema), endings:z.array(EndingSchema), seasons:z.array(SeasonSchema).length(4) });
+export type Effects=z.infer<typeof EffectsSchema>; export type Condition=z.infer<typeof ConditionSchema>; export type GameContent=z.infer<typeof ContentSchema>; export type Season=z.infer<typeof SeasonSchema>;
